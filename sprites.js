@@ -94,12 +94,26 @@ const SPR = (() => {
   });
 
   // ---------- hero ship ----------
-  const ship = () => mk('ship', 56, 52, g => {
-    g.beginPath(); g.moveTo(-6, -6); g.lineTo(-14, -22); g.lineTo(-4, -22); g.lineTo(10, -6); g.closePath(); ink(g, '#1e7fa8', 3.5);
-    g.beginPath(); g.moveTo(-6, 6); g.lineTo(-14, 22); g.lineTo(-4, 22); g.lineTo(10, 6); g.closePath(); ink(g, '#1e7fa8', 3.5);
-    g.fillStyle = '#ffb547'; g.fillRect(-14, -22, 6, 3); g.fillRect(-14, 19, 6, 3);
+  // hero ships: one silhouette family, themed per hull (light, mid, dark, wing, accent) + wing shape
+  const SHIP_THEMES = {
+    vanguard: ['#d8fbff', '#4fd8f0', '#1c86b0', '#1e7fa8', '#ffb547', 0],
+    striker: ['#fff3c4', '#ffc94d', '#c27a00', '#a35f00', '#ff2e63', 1],
+    bastion: ['#e6dcff', '#9b7bff', '#4b2bb0', '#3d2490', '#5cffb0', 2],
+    reaper: ['#ffd6de', '#ff4d6d', '#a3102f', '#7a0c24', '#3cf0ff', 3],
+  };
+  const ship = (id = 'vanguard') => mk('ship_' + id, 60, 56, g => {
+    const [c0, c1, c2, wing, acc, shape] = SHIP_THEMES[id] || SHIP_THEMES.vanguard;
+    for (const s of [-1, 1]) {
+      g.beginPath();
+      if (shape === 1) { g.moveTo(-4, s * 5); g.lineTo(-16, s * 18); g.lineTo(-10, s * 20); g.lineTo(14, s * 5); }          // swept darts
+      else if (shape === 2) { g.moveTo(-10, s * 6); g.lineTo(-16, s * 24); g.lineTo(2, s * 24); g.lineTo(8, s * 6); }      // heavy blocks
+      else if (shape === 3) { g.moveTo(-8, s * 5); g.lineTo(-20, s * 25); g.lineTo(-6, s * 16); g.lineTo(12, s * 5); }      // scythe
+      else { g.moveTo(-6, s * 6); g.lineTo(-14, s * 22); g.lineTo(-4, s * 22); g.lineTo(10, s * 6); }
+      g.closePath(); ink(g, wing, 3.5);
+      g.fillStyle = acc; g.fillRect(shape === 2 ? -14 : -14, s > 0 ? (shape === 2 ? 20 : 19) : (shape === 2 ? -23 : -22), 6, 3);
+    }
     g.beginPath(); g.moveTo(24, 0); g.bezierCurveTo(16, -10, -8, -11, -16, -6); g.lineTo(-12, 0); g.lineTo(-16, 6); g.bezierCurveTo(-8, 11, 16, 10, 24, 0);
-    ink(g, (() => { const gr = g.createLinearGradient(0, -10, 0, 10); gr.addColorStop(0, '#d8fbff'); gr.addColorStop(0.5, '#4fd8f0'); gr.addColorStop(1, '#1c86b0'); return gr; })(), 4);
+    ink(g, (() => { const gr = g.createLinearGradient(0, -10, 0, 10); gr.addColorStop(0, c0); gr.addColorStop(0.5, c1); gr.addColorStop(1, c2); return gr; })(), 4);
     g.beginPath(); g.ellipse(6, 0, 7, 4.2, 0, 0, Math.PI * 2); ink(g, rad(g, 8, -2, 8, '#ffffff', '#3b5bff'), 2.5);
     g.strokeStyle = 'rgba(11,12,28,.5)'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(-4, -6); g.lineTo(-10, 0); g.lineTo(-4, 6); g.stroke();
     g.fillStyle = '#ff2e63'; g.beginPath(); g.arc(-12, 0, 2.2, 0, Math.PI * 2); g.fill();
@@ -144,6 +158,36 @@ const SPR = (() => {
     g.closePath(); ink(g, rad(g, -3, -3, 16, '#ffffff', '#b06bff'), 3);
     g.beginPath(); g.arc(0, 0, 3.5, 0, Math.PI * 2); g.fillStyle = OUT; g.fill();
   });
+
+  // ---------- v4 additions ----------
+  const chest = (open = 0) => mk('chest' + open, 48, 44, g => {
+    g.beginPath(); g.roundRect(-17, -4, 34, 20, 4); ink(g, rad(g, -6, 0, 26, '#ffd36b', '#b8700a'), 4);
+    g.fillStyle = '#7a3f00'; g.fillRect(-17, 4, 34, 3);
+    for (const x of [-11, 9]) { g.fillStyle = '#ffe9a8'; g.fillRect(x, -4, 3, 20); }
+    g.save(); if (open) { g.translate(0, -8); g.rotate(-0.5); }
+    g.beginPath(); g.moveTo(-17, -4); g.lineTo(-17, -10); g.quadraticCurveTo(0, -20, 17, -10); g.lineTo(17, -4); g.closePath(); ink(g, rad(g, -6, -12, 24, '#ffe28a', '#d18b0f'), 4);
+    g.restore();
+    g.beginPath(); g.roundRect(-4, -7, 8, 9, 2); ink(g, '#fff6c2', 2.5);
+    shine(g, -9, -10, 5, 1.6, -0.2, 0.6);
+  });
+  const missile = () => mk('missile', 30, 14, g => {
+    g.beginPath(); g.moveTo(12, 0); g.quadraticCurveTo(6, -5, -8, -4); g.lineTo(-8, 4); g.quadraticCurveTo(6, 5, 12, 0); ink(g, '#e8ecff', 2.5);
+    g.fillStyle = '#ff2e63'; g.beginPath(); g.moveTo(12, 0); g.quadraticCurveTo(9, -3, 6, -3.5); g.lineTo(6, 3.5); g.quadraticCurveTo(9, 3, 12, 0); g.fill();
+    g.beginPath(); g.moveTo(-8, -4); g.lineTo(-12, -7); g.lineTo(-10, -1); g.moveTo(-8, 4); g.lineTo(-12, 7); g.lineTo(-10, 1); ink(g, '#ff6b3c', 2);
+  });
+  const drone = () => mk('drone', 34, 34, g => {
+    for (const a of [0.8, 2.35, 3.9, 5.5]) { g.beginPath(); g.arc(Math.cos(a) * 10, Math.sin(a) * 10, 5, 0, Math.PI * 2); ink(g, 'rgba(160,255,220,.5)', 2.5); }
+    g.beginPath(); g.arc(0, 0, 8, 0, Math.PI * 2); ink(g, rad(g, -3, -3, 10, '#e9fff6', '#18c27a'), 3.5);
+    g.fillStyle = OUT; g.beginPath(); g.arc(2, 0, 3.2, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#5cffb0'; g.beginPath(); g.arc(2.6, -0.6, 1.4, 0, Math.PI * 2); g.fill();
+  });
+  const coin = () => mk('coin', 18, 18, g => {
+    g.beginPath(); g.arc(0, 0, 6.5, 0, Math.PI * 2); ink(g, rad(g, -2, -2, 8, '#fff2b0', '#e2a20e'), 2.5);
+    g.strokeStyle = 'rgba(122,63,0,.6)'; g.lineWidth = 1.3; g.beginPath(); g.arc(0, 0, 3.6, 0, Math.PI * 2); g.stroke();
+    shine(g, -2.5, -2.5, 2, 1, -0.6, 0.8);
+  });
+  // soft white disc used to punch holes into the darkness layer
+  const lightDisc = () => { if (cache.light) return cache.light; const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d'), gr = g.createRadialGradient(64, 64, 0, 64, 64, 64); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.45, 'rgba(255,255,255,.6)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, 128, 128); return (cache.light = c); };
 
   // ---------- white silhouette (hit flash) ----------
   const whites = new Map();
@@ -196,5 +240,5 @@ const SPR = (() => {
     for (let i = 0; i < 9; i++) { const a = i * 0.7 + (i % 3), r = 15 + (i % 4) * 4; g.beginPath(); g.arc(Math.cos(a) * r, Math.sin(a) * r * 0.75, 2 + (i % 3) * 1.5, 0, Math.PI * 2); g.fill(); }
   });
 
-  return { ENEMY, bossShell, bossBody, ship, gem, heart, magnet, power, bolt, orb, blade, white, floor, DECOR, splat, OUT };
+  return { SHIP_THEMES, chest, missile, drone, coin, lightDisc, ENEMY, bossShell, bossBody, ship, gem, heart, magnet, power, bolt, orb, blade, white, floor, DECOR, splat, OUT };
 })();

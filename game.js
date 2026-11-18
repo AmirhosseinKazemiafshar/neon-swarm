@@ -189,7 +189,7 @@ function applyMeta() {
 // difficulty clock: endless = elapsed time; campaign adds a per-sector base
 const D = () => (G.diffBase || 0) + G.t;
 
-function resetField() { enemies = []; bullets = []; ebullets = []; gems = []; parts = []; shards = []; rings = []; texts = []; bolts = []; items = []; ghosts = []; decals = []; }
+function resetField() { enemies = []; bullets = []; ebullets = []; gems = []; parts = []; shards = []; rings = []; texts = []; bolts = []; items = []; ghosts = []; decals = []; FX_reset(); }
 function newRun(mode = 'endless') {
   P = { x: WORLD / 2, y: WORLD / 2, vx: 0, vy: 0, r: 14, ang: -Math.PI / 2, hp: 5, maxHp: 5, inv: 90, speed: 3.1, magnet: 95, might: 1, haste: 1, dashCd: 0, dashMax: 150, dashT: 0, dx: 0, dy: -1, recoil: 0, muzzle: 0, stretch: 0,
     crit: 0.12, xpMul: 1, coinMul: 1, dashMul: 1, enemyFast: 1, vamp: false, dashNova: false, secondWind: false };
@@ -199,6 +199,7 @@ function newRun(mode = 'endless') {
   Object.assign(G, { t: 0, frame: 0, kills: 0, level: 1, xp: 0, xpNeed: 6, combo: 0, comboT: 0, bestCombo: 0, streakIdx: 0, shake: 0, hitStop: 0, slow: 0, revived: false, nextBoss: 120, nextWave: 45, banner: null, spawnAcc: 0, cine: 0, cineH: 0, flash: 0, flashCol: '#fff', deathT: 0,
     mode, score: 0, coins: 0, relics: [], sys: 0, step: 0, node: null, stageDur: Infinity, diffBase: 0, clearAt: 0, totalT: 0, saved: false, banked: 0, rerolls: 2, tier: 0, power: 0, nextCore: 18 });
   applyMeta();
+  onNewRun();
   Object.assign(HUD, { xp: 0, heartHit: 0, killPop: 0, levelPop: 0 });
   cam.x = P.x; cam.y = P.y; cam.z = 1; cam.punch = 0;
   stars = Array.from({ length: 170 }, () => ({ x: Math.random(), y: Math.random(), d: rnd(0.08, 0.5), s: rnd(0.6, 1.8), tw: Math.random() * TAU }));
@@ -238,7 +239,7 @@ function text(x, y, s, color = '#fff', size = 15) { if (texts.length < 90) texts
 function shake(v) { if (!REDUCED) G.shake = Math.min(24, G.shake + v); }
 function flash(a, color = '#fff') { if (!REDUCED) { G.flash = Math.max(G.flash, a); G.flashCol = color; } }
 function punch(z) { if (!REDUCED) cam.punch = Math.max(cam.punch, z); }
-function buzz(ms) { try { navigator.vibrate && navigator.vibrate(ms); } catch (e) {} }
+function buzz(ms) { try { if (navigator.vibrate && (!navigator.userActivation || navigator.userActivation.hasBeenActive)) navigator.vibrate(ms); } catch (e) {} }
 function banner(s, color = '#fff', sub = '', life = 150) { G.banner = { s, sub, color, life, max: life }; }
 
 // ---------- spawning ----------
@@ -270,14 +271,14 @@ function damage(e, dmg, kx = 0, ky = 0) {
   if (e.hp <= 0) kill(e);
 }
 function kill(e) {
-  e.dead = true; G.kills++; HUD.killPop = 1;
+  e.dead = true; G.kills++; onKill(e); HUD.killPop = 1;
   G.combo++; G.comboT = 90; G.bestCombo = Math.max(G.bestCombo, G.combo);
   G.score += Math.round((e.type === 'boss' ? 2000 : e.xp * 10) * (1 + Math.min(G.combo, 200) / 50) * P.coinMul);
   if (P.vamp && G.kills % 50 === 0 && P.hp < P.maxHp) { P.hp++; HUD.heartHit = -1; text(P.x, P.y - 30, '+1 HP', '#ff4d6d', 18); }
   if (e.type === 'boss' && G.mode === 'campaign' && G.node === 'boss') G.clearAt = G.t + 2.4;
   const st = STREAKS[G.streakIdx];
   if (st && G.combo >= st[0]) { G.streakIdx++; banner(st[1], st[2], G.combo + ' kill streak', 110); AU.sfx('streak'); flash(0.18, st[2]); punch(0.05); }
-  const big = e.type === 'boss' || e.type === 'tank';
+  const big = e.type === 'boss' || e.type === 'tank' || e.elite;
   decals.push({ x: e.x, y: e.y, color: e.color, sc: e.r / 13, rot: Math.random() * TAU, life: 900 }); if (decals.length > 140) decals.shift();
   burst(e.x, e.y, e.color, big ? 40 : 10, big ? 7 : 4.5, big ? 4 : 3);
   shatter(e.x, e.y, e.color, big ? 16 : 5, big ? 7 : 4.5, big ? 9 : 5);
@@ -339,31 +340,32 @@ function fireBlaster() {
   P.recoil = 3 + G.tier * 0.4; P.muzzle = 4; P.muzzleAng = base; AU.sfx('shoot');
 }
 function updateWeapons() {
+  updateExtraWeapons();
   if (--WP.blasterCd <= 0) { fireBlaster(); WP.blasterCd = TIERS[G.tier].rate * P.haste; }
   if (LV.orbit) {
-    const n = LV.orbit + 1, R = 62 + LV.orbit * 8; WP.orbitAng += 0.055 + LV.orbit * 0.008;
+    const n = EVO.orbit ? 8 : LV.orbit + 1, R = EVO.orbit ? 105 : 62 + LV.orbit * 8; WP.orbitAng += EVO.orbit ? 0.085 : 0.055 + LV.orbit * 0.008;
     for (let i = 0; i < n; i++) {
       const a = WP.orbitAng + i * TAU / n, bx = P.x + Math.cos(a) * R, by = P.y + Math.sin(a) * R;
       near(bx, by, 40, e => {
         if (!e.dead && G.frame - e.orbitHit > 18 && (e.x - bx) ** 2 + (e.y - by) ** 2 < (e.r + 12) ** 2) {
-          e.orbitHit = G.frame; damage(e, 9 + LV.orbit * 2, Math.cos(a + 1.57) * 3, Math.sin(a + 1.57) * 3);
+          e.orbitHit = G.frame; damage(e, (9 + LV.orbit * 2) * (EVO.orbit ? 2 : 1), Math.cos(a + 1.57) * 3, Math.sin(a + 1.57) * 3);
           burst(bx, by, '#d9b8ff', 4, 3, 2, 14);
         }
       });
     }
   }
   if (LV.chain && --WP.chainCd <= 0) {
-    WP.chainCd = (100 - LV.chain * 8) * P.haste;
+    WP.chainCd = (EVO.chain ? 38 : 100 - LV.chain * 8) * P.haste;
     let cur = nearest(P.x, P.y, 420);
     if (cur) {
-      const hit = new Set(), pts = [{ x: P.x, y: P.y }], jumps = 1 + LV.chain * 2, dmg = 20 * (1 + (LV.chain - 1) * 0.25);
+      const hit = new Set(), pts = [{ x: P.x, y: P.y }], jumps = EVO.chain ? 16 : 1 + LV.chain * 2, dmg = 20 * (1 + (LV.chain - 1) * 0.25);
       for (let j = 0; j <= jumps && cur; j++) { hit.add(cur); pts.push({ x: cur.x, y: cur.y }); const c = cur; cur = nearest(c.x, c.y, 190, hit); damage(c, dmg, 0, 0); burst(c.x, c.y, '#ffe14d', 5, 3, 2, 16); }
       bolts.push({ pts, life: 14 }); AU.sfx('zap'); flash(0.05, '#ffe14d');
     }
   }
   if (LV.nova && --WP.novaCd <= 0) {
-    WP.novaCd = (260 - LV.nova * 25) * P.haste;
-    const R = 110 + LV.nova * 22;
+    WP.novaCd = (EVO.nova ? 140 : 260 - LV.nova * 25) * P.haste;
+    const R = EVO.nova ? 290 : 110 + LV.nova * 22; if (EVO.nova) onSupernova();
     ring(P.x, P.y, 10, R, '#ff6b3c', 26, 10); ring(P.x, P.y, 10, R * 0.8, '#ffe14d', 20, 3);
     burst(P.x, P.y, '#ff6b3c', 24, 8, 3, 24);
     AU.sfx('nova'); shake(6); punch(0.03);
@@ -503,14 +505,16 @@ function update() {
   }
   for (let i = items.length - 1; i >= 0; i--) {
     const it = items[i]; it.t++;
-    if (it.kind === 'power' && it.t > 20) { const dx = P.x - it.x, dy = P.y - it.y, d = Math.hypot(dx, dy) || 1; if (d < 700) { const s = Math.min(12, 2.5 + (it.t - 20) * 0.08); it.x += dx / d * s; it.y += dy / d * s; } }
+    if ((it.kind === 'power' || it.kind === 'chest') && it.t > 20) { const dx = P.x - it.x, dy = P.y - it.y, d = Math.hypot(dx, dy) || 1; if (d < 700) { const s = Math.min(12, 2.5 + (it.t - 20) * 0.08); it.x += dx / d * s; it.y += dy / d * s; } }
     if ((it.x - P.x) ** 2 + (it.y - P.y) ** 2 < 30 * 30) {
       items.splice(i, 1); AU.sfx('pick'); buzz(30);
-      if (it.kind === 'power') { gainPower(it.v || 1); ring(P.x, P.y, 10, 60, '#ffe14d', 16, 4); }
+      if (it.kind === 'chest') openChest();
+      else if (it.kind === 'power') { gainPower(it.v || 1); ring(P.x, P.y, 10, 60, '#ffe14d', 16, 4); }
       else if (it.kind === 'heart') { P.hp = Math.min(P.maxHp, P.hp + 2); HUD.heartHit = -1; text(P.x, P.y - 30, '+2 HP', '#ff4d6d', 22); ring(P.x, P.y, 10, 70, '#ff4d6d', 20, 4); flash(0.12, '#ff4d6d'); }
       else { gems.forEach(g => { g.pull = true; g.age = 99; }); text(P.x, P.y - 30, 'MAGNET!', '#4dd6ff', 22); ring(P.x, P.y, 10, 300, '#4dd6ff', 30, 5); flash(0.12, '#4dd6ff'); }
     }
   }
+  featureUpdate();
   if (G.comboT > 0 && --G.comboT === 0) { G.combo = 0; G.streakIdx = 0; }
   if (G.mode === 'campaign' && G.state === 'play' && ((G.node !== 'boss' && G.t >= G.stageDur) || (G.clearAt && G.t >= G.clearAt))) stageClear();
 }
@@ -553,7 +557,7 @@ function shapePath(e, r) {
 
 function drawShip(x, y, ang, stretch, alpha = 1, ghost = false) {
   X.save(); X.translate(x, y); X.rotate(ang); X.scale(1 + stretch * 0.22, 1 - stretch * 0.15); X.globalAlpha = alpha;
-  const s = ghost ? SPR.white(SPR.ship()) : SPR.ship(), sc = 0.82;
+  const s = ghost ? SPR.white(SPR.ship(G.ship)) : SPR.ship(G.ship), sc = 0.82;
   if (!ghost) {
     const fl = 10 + Math.random() * 7 + stretch * 14;
     X.fillStyle = '#ff7a2e'; X.beginPath(); X.moveTo(-12, -6); X.quadraticCurveTo(-12 - fl, 0, -12, 6); X.fill();
@@ -655,9 +659,10 @@ function draw() {
   // items
   for (const it of items) {
     const p = 1 + Math.sin(it.t * 0.12) * 0.15, fy = Math.sin(it.t * 0.06) * 4;
-    const gc = it.kind === 'heart' ? '#ff4d6d' : it.kind === 'power' ? '#ffe14d' : '#4dd6ff';
+    const gc = it.kind === 'heart' ? '#ff4d6d' : it.kind === 'power' || it.kind === 'chest' ? '#ffe14d' : '#4dd6ff';
     X.globalCompositeOperation = 'lighter'; glow(it.x, it.y + fy, 34 * p, gc, 0.8); X.globalCompositeOperation = 'source-over'; X.globalAlpha = 1;
-    if (it.kind === 'power') blit(SPR.power(), it.x, it.y + fy, p * (it.v > 1 ? 1.2 : 1), Math.sin(it.t * 0.05) * 0.3);
+    if (it.kind === 'chest') blit(SPR.chest(), it.x, it.y + fy, p * 1.1);
+    else if (it.kind === 'power') blit(SPR.power(), it.x, it.y + fy, p * (it.v > 1 ? 1.2 : 1), Math.sin(it.t * 0.05) * 0.3);
     else blit(it.kind === 'heart' ? SPR.heart() : SPR.magnet(), it.x, it.y + fy, p * 0.95);
   }
 
@@ -699,6 +704,7 @@ function draw() {
       X.fillStyle = SPR.OUT; X.beginPath(); X.ellipse(Math.cos(a) * 9 * sc, Math.sin(a) * 9 * sc, ir * 0.35, ir * 0.8, a, 0, TAU); X.fill();
       X.restore(); continue;
     }
+    if (e.elite) drawElite(e);
     const frame = e.type === 'swarm' ? ((G.frame >> 2) + (e.wob * 3 | 0)) & 1 : ((e.walk / 1.6) | 0) & 1;
     let spr = SPR.ENEMY[e.type](frame); if (e.flash) spr = SPR.white(spr);
     const sc = e.r * SCALE[e.type], bob = e.type === 'swarm' ? -9 + Math.sin(e.walk) * 3 : -Math.abs(Math.sin(e.walk)) * 3.5;
@@ -725,7 +731,7 @@ function draw() {
 
   // orbit blades with motion trails
   if (LV.orbit) {
-    const n = LV.orbit + 1, R = 62 + LV.orbit * 8, spd = 0.055 + LV.orbit * 0.008;
+    const n = EVO.orbit ? 8 : LV.orbit + 1, R = EVO.orbit ? 105 : 62 + LV.orbit * 8, spd = EVO.orbit ? 0.085 : 0.055 + LV.orbit * 0.008;
     X.strokeStyle = 'rgba(176,107,255,.12)'; X.lineWidth = 1; X.beginPath(); X.arc(P.x, P.y, R, 0, TAU); X.stroke();
     for (let i = 0; i < n; i++) {
       const a = WP.orbitAng + i * TAU / n, bx = P.x + Math.cos(a) * R, by = P.y + Math.sin(a) * R;
@@ -766,6 +772,7 @@ function draw() {
   }
   X.globalAlpha = 1; X.globalCompositeOperation = 'source-over';
 
+  drawExtrasWorld();
   // player
   if (G.state !== 'over') { X.fillStyle = 'rgba(0,0,0,.4)'; X.beginPath(); X.ellipse(P.x, P.y + 16, 15, 5.5, 0, 0, TAU); X.fill(); }
   if (G.state === 'title') drawShip(P.x, P.y, P.ang, 0.2);
@@ -793,6 +800,7 @@ function draw() {
     X.save(); X.translate(ax, ay); X.rotate(a); X.scale(p, p); X.fillStyle = '#ff2e63'; X.beginPath(); X.moveTo(16, 0); X.lineTo(-8, -11); X.lineTo(-8, 11); X.fill(); X.restore();
   }
 
+  postFX();
   // vignette / low hp
   const vg = X.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.35, W / 2, H / 2, Math.max(W, H) * 0.75);
   const low = P.hp === 1 && G.state === 'play' ? 0.25 + Math.sin(G.frame * 0.12) * 0.12 : 0;
@@ -806,7 +814,7 @@ function draw() {
   // screen flash
   if (G.flash > 0.01) { X.globalAlpha = G.flash; X.fillStyle = G.flashCol; X.fillRect(0, 0, W, H); X.globalAlpha = 1; G.flash *= 0.84; }
 
-  if (G.state !== 'title' && G.state !== 'map') drawHud(boss);
+  if (G.state !== 'title' && G.state !== 'map') { drawHud(boss); drawFeatureHud(); }
 
   if (joy && G.state === 'play') {
     X.strokeStyle = 'rgba(255,255,255,.18)'; X.lineWidth = 2; X.beginPath(); X.arc(joy.ox, joy.oy, 56, 0, TAU); X.stroke();
@@ -870,7 +878,7 @@ function drawHud(boss) {
   }
   // score (right)
   X.textAlign = 'right'; X.font = '900 16px system-ui'; X.fillStyle = '#ffe14d'; X.fillText(G.score.toLocaleString('en-US'), W - 12, top + 52);
-  X.font = '700 10px system-ui'; X.fillStyle = '#8d93c4'; X.fillText(G.mode === 'campaign' ? '¤ ' + G.coins + ' · SCORE' : 'SCORE', W - 12, top + 68);
+  X.font = '700 10px system-ui'; X.fillStyle = '#8d93c4'; X.fillText('¤ ' + G.coins + ' · SCORE', W - 12, top + 68);
   X.textAlign = 'center';
   X.font = `700 ${12 * (1 + HUD.killPop * 0.35)}px system-ui`; X.fillStyle = HUD.killPop > 0.3 ? '#fff' : '#8d93c4'; X.fillText('☠ ' + G.kills, W / 2, top + 40);
   if (G.combo >= 5) {
@@ -918,6 +926,7 @@ function titleScreen() {
   enemies.forEach(e => { e.spawnT = 0; e.tx = e.x; e.ty = e.y; });
   show(`<div class="logo in">NEON<span>SWARM</span></div>
     <p class="tag in">Survive the swarm. Grow unstoppable.</p>
+    ${titleExtrasHtml()}
     <div class="stats in"><div class="stat"><b>${fmt(s.best)}</b><span>Best time</span></div><div class="stat"><b>${s.bestKills}</b><span>Best kills</span></div><div class="stat"><b>${s.rounds}</b><span>Runs</span></div></div>
     <button class="btn in mode" id="camp"><b>CAMPAIGN</b><span>5 star systems · routes, relics, bosses</span></button>
     <button class="btn cyan in mode" id="endl"><b>ENDLESS</b><span>Score attack · beat the records</span></button>
@@ -928,6 +937,7 @@ function titleScreen() {
   document.getElementById('endl').onclick = () => { AU.init(); AU.sfx('ui'); hide(() => start('endless')); flash(0.5, '#3cf0ff'); };
   document.getElementById('rec').onclick = () => { AU.init(); AU.sfx('ui'); recordsScreen('endless'); };
   document.getElementById('hang').onclick = () => { AU.init(); AU.sfx('ui'); hangarScreen(); };
+  bindTitleExtras();
   document.getElementById('snd').onclick = e => { AU.on = !AU.on; Save.bump(s => s.sound = AU.on); e.target.textContent = 'Sound: ' + (AU.on ? 'ON' : 'OFF'); };
 }
 function updateTitle() {
@@ -1100,7 +1110,7 @@ function applyUpgrade(u) {
 function levelUpScreen() {
   G.state = 'levelup'; joy = null;
   // fair offer: always one upgrade for a weapon you already own, a new weapon early on, then anything
-  const avail = UPGRADES.filter(u => u.id !== 'blaster' && LV[u.id] < u.max), WEAP = ['orbit', 'chain', 'nova'];
+  const avail = UPGRADES.filter(u => u.id !== 'blaster' && LV[u.id] < u.max), WEAP = WEAPON_IDS;
   const mix = a => a.sort(() => Math.random() - 0.5);
   const ownedUp = mix(avail.filter(u => LV[u.id] > 0 && WEAP.includes(u.id))), newW = mix(avail.filter(u => LV[u.id] === 0 && WEAP.includes(u.id)));
   let pick = [];
@@ -1112,7 +1122,7 @@ function levelUpScreen() {
   show(`<div class="lv in">LEVEL ${G.level}</div><div class="h2 in">Choose a power</div>` +
     pick.map((u, i) => {
       const lv = (LV[u.id] || 0) + 1;
-      return `<button class="card in" data-i="${i}" style="border-color:${u.col}55"><div class="ic" style="color:${u.col};box-shadow:inset 0 0 0 1.5px ${u.col}66">${u.icon}</div><div><b>${u.name}</b>${lv === 1 && u.id !== 'heal' ? '<span class="new">NEW</span>' : u.max < 99 ? `<span class="lvl">Lv ${lv - 1} → ${lv}</span>` : ''}<p>${u.desc(lv)}</p>${u.max < 99 ? `<div class="pips">${Array.from({ length: u.max }, (_, k) => `<i class="${k < lv - 1 ? 'on' : k === lv - 1 ? 'next' : ''}"></i>`).join('')}</div>` : ''}</div></button>`;
+      return `<button class="card in ${rarity(u, lv)}" data-i="${i}" style="border-color:${u.col}55"><div class="ic" style="color:${u.col};box-shadow:inset 0 0 0 1.5px ${u.col}66">${u.icon}</div><div><b>${u.name}</b>${lv === 1 && u.id !== 'heal' ? '<span class="new">NEW</span>' : u.max < 99 ? `<span class="lvl">Lv ${lv - 1} → ${lv}</span>` : ''}<p>${u.desc(lv)}</p>${u.max < 99 ? `<div class="pips">${Array.from({ length: u.max }, (_, k) => `<i class="${k < lv - 1 ? 'on' : k === lv - 1 ? 'next' : ''}"></i>`).join('')}</div>` : ''}</div></button>`;
     }).join('') + `<button class="btn ghost in" id="rr" style="font-size:14px;padding:10px">↻ Reroll ${G.rerolls > 0 ? '· ' + G.rerolls + ' left' : '· watch ad'}</button>`);
   document.getElementById('rr').onclick = () => {
     AU.sfx('ui');
@@ -1152,10 +1162,11 @@ function endScreen(won) {
     : mode === 'campaign' ? `<div class="lv in" style="color:#ff2e63">RUN OVER</div><div class="h2 in">Fell in ${SYSTEMS[Math.min(G.sys, 4)].name}</div>`
     : `<div class="lv in" style="color:#ff2e63">RUN OVER</div><div class="h2 in">You survived ${fmt(t)}</div>`;
   const name = esc(Save.get().name || '');
-  const earned = Math.floor(G.score / 40) + (mode === 'campaign' ? G.coins : 0), delta = Math.max(0, earned - G.banked); G.banked = Math.max(G.banked, earned);
+  onRunEnd(); const earned = Math.floor(G.score / 80) + G.coins, delta = Math.max(0, earned - G.banked); G.banked = Math.max(G.banked, earned);
   const bank = Save.bump(s => s.credits = (s.credits || 0) + delta).credits;
   show(`${head}
     <div class="credits in">+${delta} credits <span>· ${bank} in the hangar</span></div>
+    ${missionResultsHtml()}
     <div class="score in"><span>SCORE</span><b id="sc">0</b>${best ? '<em>NEW #1 RECORD</em>' : top ? `<em>TOP 10 · #${rank + 1}</em>` : ''}</div>
     <div class="stats in"><div class="stat"><b>${G.kills}</b><span>Kills</span></div><div class="stat"><b>${G.level}</b><span>Level</span></div><div class="stat"><b>${G.bestCombo}</b><span>Best combo</span></div></div>
     ${!won && !G.revived ? '<button class="btn cyan in" id="rev">▶ Watch ad to revive</button>' : ''}
@@ -1208,7 +1219,7 @@ function loop(now) {
     else {
       acc += dt * (G.slow > 0 ? 0.25 : 1);
       while (acc >= 1000 / 60) { acc -= 1000 / 60; update(); if (G.state !== 'play') break; }
-      if (G.slow > 0 && --G.slow === 0 && G.state === 'play') levelUpScreen();
+      if (G.state === 'play' && G.slow > 0 && --G.slow === 0) levelUpScreen();
     }
   } else if (G.state === 'title') updateTitle();
   else if (G.state === 'over') G.deathT++;
@@ -1231,5 +1242,4 @@ function loop(now) {
   draw();
   requestAnimationFrame(loop);
 }
-titleScreen();
-requestAnimationFrame(loop);
+// boot happens at the end of features.js (it adds hooks used above)

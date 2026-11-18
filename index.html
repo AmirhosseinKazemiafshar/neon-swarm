@@ -61,6 +61,36 @@ table.board{width:100%;border-collapse:collapse;font-size:14px;background:var(--
 .board th{font-size:10px;letter-spacing:1.5px;color:var(--muted);text-align:left;padding:10px 8px;font-weight:800}.board td{padding:9px 8px;border-top:1px solid #1f2446;text-align:left}
 .board td:last-child,.board th:last-child{text-align:right;font-weight:900;color:var(--gold);font-variant-numeric:tabular-nums}.board td:nth-child(3){color:var(--muted);font-size:12px}
 .board tr.me td{background:rgba(60,240,255,.12)}
+.card.r-common{border-color:#2a3060!important}
+.card.r-rare{border-color:#3c9bff!important;box-shadow:0 0 18px rgba(60,155,255,.22)}
+.card.r-epic{border-color:#b06bff!important;box-shadow:0 0 22px rgba(176,107,255,.3);background:linear-gradient(135deg,#1b1640,var(--panel) 60%)}
+.card.in{animation:flip .5s var(--ease) forwards;transform:perspective(700px) rotateY(80deg);opacity:0}
+@keyframes flip{to{transform:none;opacity:1}}
+.chestwrap{position:relative;height:150px;display:flex;align-items:center;justify-content:center}
+.chestimg{width:120px;position:relative;z-index:1;animation:pop .6s var(--ease) both,bob 1.6s ease-in-out .6s infinite}
+@keyframes bob{50%{transform:translateY(-6px)}}
+.beams{position:absolute;width:260px;height:260px;border-radius:50%;background:repeating-conic-gradient(rgba(255,201,77,.28) 0 10deg,transparent 10deg 30deg);animation:spin 6s linear infinite;-webkit-mask:radial-gradient(circle,#000 20%,transparent 68%);mask:radial-gradient(circle,#000 20%,transparent 68%)}
+.beams.legend{background:repeating-conic-gradient(rgba(255,46,99,.35) 0 8deg,rgba(255,201,77,.3) 8deg 16deg,transparent 16deg 30deg)}
+@keyframes spin{to{transform:rotate(360deg)}}
+.reels{display:flex;gap:8px;justify-content:center}
+.reel{flex:1;max-width:120px;background:var(--panel);border:2px solid #2a3060;border-radius:16px;padding:12px 6px;display:flex;flex-direction:column;align-items:center;gap:4px;transition:border-color .2s,transform .2s}
+.reel .ri{font-size:32px;height:40px;display:flex;align-items:center}.reel b{font-size:13px;min-height:16px}.reel p{margin:0;font-size:11px;color:var(--muted);min-height:14px}
+.reel.done{transform:scale(1.05);animation:pop .35s var(--ease)}
+.reel.r-legend.done{box-shadow:0 0 30px rgba(255,46,99,.5);background:linear-gradient(160deg,#3a1030,var(--panel))}
+.shipsel{display:flex;align-items:center;gap:6px}
+.shipsel .arrow{flex:0 0 34px;height:64px;border-radius:12px;border:1px solid #2a3060;background:var(--panel);color:var(--ink);font-size:24px;cursor:pointer}
+.shipcard{flex:1;display:flex;gap:8px;align-items:center;text-align:left;background:var(--panel);border:1px solid #2a3060;border-radius:16px;padding:6px 10px 6px 4px;min-height:100px}
+.shipcard canvas{width:84px;height:84px;flex:0 0 84px}.shipcard b{font-size:16px}.shipcard p{margin:2px 0;font-size:12px;color:var(--muted);line-height:1.3}.shipcard small{font-size:11px;color:var(--cyan);display:block;margin-bottom:5px}
+.shipcard em{font-style:normal;font-size:10px;font-weight:900;letter-spacing:1px;color:#04121a;background:var(--cyan);border-radius:6px;padding:2px 7px}
+.shipcard.locked b{color:var(--muted)}
+.mini{font:800 12px system-ui;border:0;border-radius:9px;padding:6px 10px;cursor:pointer;background:var(--panel2);color:var(--ink)}.mini.gold{background:var(--gold);color:#241500}.mini:disabled{opacity:.45}
+.missions{background:var(--panel);border:1px solid #23284d;border-radius:16px;padding:10px 12px;text-align:left}
+.missions .mh{font-size:11px;font-weight:900;letter-spacing:2px;color:var(--gold);margin-bottom:4px}.missions .mh span{color:var(--muted);letter-spacing:0;font-weight:600}
+.mrow{display:flex;justify-content:space-between;gap:10px;font-size:13px;padding:5px 0;border-top:1px solid #1f2446}.mrow b{color:var(--gold);white-space:nowrap}
+.mres{background:rgba(92,255,176,.08);border:1px solid rgba(92,255,176,.35);border-radius:14px;padding:8px 12px;text-align:left;font-size:13px}.mres div{display:flex;justify-content:space-between;padding:3px 0}.mres b{color:var(--gold)}
+/* chosen / faded cards must escape the entrance animation's fill */
+.card.chosen{animation:none!important;opacity:1}.card.fade{animation:none!important}
+@media (prefers-reduced-motion:reduce){.card.in{animation:none;opacity:1;transform:none}.beams{animation:none}}
 .ad{background:#000;border-radius:14px;padding:38px 10px;color:#aaa;font-size:14px}
 .ad b{display:block;font-size:48px;color:#fff;margin-top:6px}
 .row{display:flex;gap:10px}.row>*{flex:1}
@@ -74,4 +104,5 @@ table.board{width:100%;border-collapse:collapse;font-size:14px;background:var(--
 <div id="scr" class="screen"><div class="box" id="box"></div></div>
 <script src="sprites.js"></script>
 <script src="game.js"></script>
+<script src="features.js"></script>
 </body></html>
