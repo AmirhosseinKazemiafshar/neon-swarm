@@ -35,12 +35,17 @@ canvas{display:block}
 .pips{margin-top:5px;display:flex;gap:4px}.pips i{width:14px;height:4px;border-radius:2px;background:#2a3060}.pips i.on{background:var(--gold)}.pips i.next{background:var(--cyan);animation:breathe 1.2s ease-in-out infinite}
 .credits{font-weight:900;color:var(--gold);font-size:15px}.credits span{color:var(--muted);font-weight:700}
 .box{max-height:100%;overflow-y:auto;scrollbar-width:none}.box::-webkit-scrollbar{display:none}.screen{touch-action:pan-y}
+.card small.kind{display:block;font-size:9px;font-weight:900;letter-spacing:1.5px;margin-bottom:1px}
 .lvl{font-size:11px;font-weight:900;color:var(--gold);margin-left:6px}
 #hudbtn{position:fixed;top:max(10px,env(safe-area-inset-top));right:10px;z-index:4;width:40px;height:40px;border-radius:12px;border:1px solid #2a3060;background:rgba(18,21,42,.7);color:var(--ink);font-size:16px;cursor:pointer;display:none}
 .card.chosen{transform:scale(1.05);border-color:var(--gold)!important;box-shadow:0 0 0 2px var(--gold),0 0 40px rgba(255,201,77,.45);transition:transform .2s var(--ease),box-shadow .2s}
 .card.fade{opacity:0;transform:translateY(10px) scale(.96);transition:opacity .18s,transform .18s}
 .screen.out{animation:fadeout .22s ease-in forwards}@keyframes fadeout{to{opacity:0}}
 #dash{position:fixed;right:max(18px,env(safe-area-inset-right));bottom:max(26px,env(safe-area-inset-bottom));z-index:4;width:78px;height:78px;border-radius:50%;border:0;padding:4px;cursor:pointer;display:none;background:conic-gradient(var(--cyan) var(--p,100%),rgba(255,255,255,.08) 0);transition:transform .12s var(--ease)}
+#ult{position:fixed;right:max(26px,env(safe-area-inset-right));bottom:max(118px,calc(env(safe-area-inset-bottom) + 92px));z-index:4;width:62px;height:62px;border-radius:50%;border:0;padding:4px;cursor:pointer;display:none;background:conic-gradient(var(--uc,#ffc94d) var(--p,0%),rgba(255,255,255,.08) 0);transition:transform .12s var(--ease)}
+#ult span{display:flex;flex-direction:column;width:100%;height:100%;border-radius:50%;align-items:center;justify-content:center;background:rgba(12,15,32,.9);color:var(--uc,#ffc94d);font:900 11px system-ui;letter-spacing:.5px;line-height:1.1}
+#ult span small{font-size:9px;opacity:.7}#ult.ready{box-shadow:0 0 26px var(--uc,#ffc94d);animation:breathe 1.2s ease-in-out infinite}#ult:active{transform:scale(.9)}
+.card.r-legend{border-color:#ff2e63!important;box-shadow:0 0 26px rgba(255,46,99,.4);background:linear-gradient(135deg,#3a1030,var(--panel) 65%)}
 #dash span{display:flex;width:100%;height:100%;border-radius:50%;align-items:center;justify-content:center;background:rgba(12,15,32,.88);color:var(--cyan);font:900 13px system-ui;letter-spacing:1px}
 #dash.ready{box-shadow:0 0 24px rgba(60,240,255,.5)}#dash:active{transform:scale(.9)}
 .logo.in{animation:rise .42s var(--ease) forwards,breathe 3.2s ease-in-out .6s infinite}@keyframes breathe{50%{filter:drop-shadow(0 0 30px rgba(60,240,255,.7))}}
@@ -108,4 +113,5 @@ table.board{width:100%;border-collapse:collapse;font-size:14px;background:var(--
 <script src="game.js"></script>
 <script src="features.js"></script>
 <script src="world.js"></script>
+<script src="heroes.js"></script>
 </body></html>

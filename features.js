@@ -37,7 +37,7 @@ function FX_reset() { missiles = []; smokes = []; coinDrops = []; flashes = []; 
 function onNewRun() {
   EVO = {}; LV.missile = 0; LV.drone = 0; drones = [];
   const s = Save.get();
-  G.ship = SHIPS.some(x => x.id === s.ship) ? s.ship : 'vanguard';
+  G.ship = SHIPS.some(x => x.id === s.ship) ? s.ship : SHIPS[0].id;
   Object.assign(G, { chests: 0, evolved: 0, bossKills: 0, maxTier: 0, nextElite: 50, missionsDone: [], missionResults: [] });
   SHIPS.find(x => x.id === G.ship).apply();
   WP.missileCd = 50; WP.novaCount = 0;
@@ -156,7 +156,7 @@ function drawExtrasWorld() {
   for (const c of coinDrops) { const sp = Math.cos(c.t); blit(SPR.coin(), c.x, c.y + Math.sin(c.t * 0.7) * 1.5, 1, 0, Math.abs(sp) * 0.75 + 0.25, 1); }
   // engine ribbon
   if (trail.length > 2 && G.state !== 'over') {
-    const col = SPR.SHIP_THEMES[G.ship || 'vanguard'][1];
+    const col = SPR.SHIP_THEMES[G.ship || SHIPS[0].id][1];
     X.globalCompositeOperation = 'lighter'; X.lineCap = 'round';
     for (let i = 1; i < trail.length; i++) { const k = 1 - i / trail.length; X.strokeStyle = col; X.globalAlpha = k * 0.5; X.lineWidth = 9 * k + 1; X.beginPath(); X.moveTo(trail[i - 1].x, trail[i - 1].y); X.lineTo(trail[i].x, trail[i].y); X.stroke(); }
     X.globalAlpha = 1; X.globalCompositeOperation = 'source-over';
@@ -341,14 +341,14 @@ function missionResultsHtml() {
 // ---------- title: ship hangar + missions + graphics ----------
 let viewShip = 0;
 function titleExtrasHtml() {
-  const s = Save.get(); viewShip = Math.max(0, SHIPS.findIndex(x => x.id === (s.ship || 'vanguard')));
+  const s = Save.get(); viewShip = Math.max(0, SHIPS.findIndex(x => x.id === (s.ship || SHIPS[0].id)));
   const ms = activeMissions();
   return `<div class="shipsel in" id="shipsel"></div>
     <div class="missions in"><div class="mh">MISSIONS <span>rewards go to the hangar</span></div>${ms.map(m => `<div class="mrow"><span>${esc(m.label)}</span><b>+${m.reward}</b></div>`).join('')}</div>`;
 }
 function renderShipSel() {
   const el = document.getElementById('shipsel'); if (!el) return;
-  const s = Save.get(), sh = SHIPS[viewShip], owned = sh.cost === 0 || (s.ships || []).includes(sh.id), sel = (s.ship || 'vanguard') === sh.id;
+  const s = Save.get(), sh = SHIPS[viewShip], owned = sh.cost === 0 || (s.ships || []).includes(sh.id), sel = (s.ship || SHIPS[0].id) === sh.id;
   el.innerHTML = `<button class="arrow" id="shp" aria-label="Previous ship">‹</button>
     <div class="shipcard ${owned ? '' : 'locked'}"><canvas id="shipcv" width="112" height="112"></canvas>
       <div><b>${sh.name}</b><p>${sh.desc}</p><small>${sh.stats}</small>

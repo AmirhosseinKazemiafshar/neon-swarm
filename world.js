@@ -194,7 +194,7 @@ function worldUpdate() {
     else b.prog = Math.max(0, b.prog - 1 / 180);
   }
   if (SETB.hull6 && (G.regen = (G.regen || 0) + 1) >= 2400) { G.regen = 0; if (P.hp < P.maxHp) { P.hp++; HUD.heartHit = -1; text(P.x, P.y - 30, '+1 HP', '#7fd1ff', 16); } }
-  if (P.maxHp > 8) { P.maxHp = 8; P.hp = Math.min(P.hp, 8); }
+  { const cap = G.hpCap || 8; if (P.maxHp > cap) { P.maxHp = cap; P.hp = Math.min(P.hp, cap); } }
 }
 
 const BEACON_REWARDS = [
@@ -317,6 +317,4 @@ bindTitleExtras = function () {
   const anchor = [...document.querySelectorAll('#box .btn.ghost')].pop(); if (anchor) anchor.after(b);
 };
 
-// ---------- boot ----------
-titleScreen();
-requestAnimationFrame(loop);
+// boot happens at the end of heroes.js

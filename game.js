@@ -197,7 +197,7 @@ function newRun(mode = 'endless') {
   LV = { blaster: 1, orbit: 0, chain: 0, nova: 0, might: 0, haste: 0, speed: 0, magnet: 0, heart: 0 };
   WP = { blasterCd: 0, burst: 0, orbitAng: 0, chainCd: 60, novaCd: 120 };
   Object.assign(G, { t: 0, frame: 0, kills: 0, level: 1, xp: 0, xpNeed: 6, combo: 0, comboT: 0, bestCombo: 0, streakIdx: 0, shake: 0, hitStop: 0, slow: 0, revived: false, nextBoss: 120, nextWave: 45, banner: null, spawnAcc: 0, cine: 0, cineH: 0, flash: 0, flashCol: '#fff', deathT: 0,
-    mode, score: 0, coins: 0, relics: [], sys: 0, step: 0, node: null, stageDur: Infinity, diffBase: 0, clearAt: 0, totalT: 0, saved: false, banked: 0, rerolls: 2, tier: 0, power: 0, nextCore: 18 });
+    mode, score: 0, coins: 0, relics: [], sys: 0, step: 0, node: null, stageDur: Infinity, diffBase: 0, clearAt: 0, totalT: 0, saved: false, banked: 0, rerolls: 2, tier: 0, power: 0, nextCore: Infinity });
   applyMeta();
   onNewRun();
   Object.assign(HUD, { xp: 0, heartHit: 0, killPop: 0, levelPop: 0 });
@@ -450,14 +450,14 @@ function update() {
   updateWeapons();
 
   for (let i = bullets.length - 1; i >= 0; i--) {
-    const b = bullets[i]; b.x += b.vx; b.y += b.vy; b.life--;
+    const b = bullets[i]; if (b.homing) homeBullet(b); b.x += b.vx; b.y += b.vy; b.life--;
     let dead = b.life <= 0;
     if (!dead) near(b.x, b.y, 30, e => {
       if (e.dead || e.spawnT > 0 || (b.hitSet && b.hitSet.has(e))) return;
       if ((e.x - b.x) ** 2 + (e.y - b.y) ** 2 < (e.r + 5) ** 2) {
         damage(e, b.dmg, b.vx * 0.35, b.vy * 0.35);
         for (let k = 0; k < 3 && parts.length < 900; k++) { const a = Math.atan2(-b.vy, -b.vx) + rnd(-0.7, 0.7), s = rnd(2, 5); parts.push({ x: b.x, y: b.y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 12, max: 12, size: 2.5, color: '#bff9ff', drag: 0.85 }); }
-        if (b.pierce-- > 0) { (b.hitSet = b.hitSet || new Set()).add(e); } else { dead = true; return false; }
+        if (onBulletHit(b, e) || b.pierce-- > 0) { (b.hitSet = b.hitSet || new Set()).add(e); } else { dead = true; return false; }
       }
     });
     if (dead) bullets.splice(i, 1);
@@ -485,6 +485,7 @@ function update() {
       if (o === e) return; const ox = e.x - o.x, oy = e.y - o.y, dd = ox * ox + oy * oy, min = e.r + o.r;
       if (dd < min * min && dd > 0.01) { const l = Math.sqrt(dd), push = (min - l) / l * 0.25; e.vx += ox * push; e.vy += oy * push; }
     });
+    if (e.slowT > 0) { e.slowT--; sx *= 0.45; sy *= 0.45; }
     e.vx *= 0.82; e.vy *= 0.82;
     e.x = clamp(e.x + sx + e.vx, 0, WORLD); e.y = clamp(e.y + sy + e.vy, 0, WORLD);
     if (P.inv <= 0 && d < e.r + P.r - 2) hurt(e.dmg, e.x, e.y);
@@ -505,10 +506,11 @@ function update() {
   }
   for (let i = items.length - 1; i >= 0; i--) {
     const it = items[i]; it.t++;
-    if ((it.kind === 'power' || it.kind === 'chest') && it.t > 20) { const dx = P.x - it.x, dy = P.y - it.y, d = Math.hypot(dx, dy) || 1; if (d < 700) { const s = Math.min(12, 2.5 + (it.t - 20) * 0.08); it.x += dx / d * s; it.y += dy / d * s; } }
+    if ((it.kind === 'power' || it.kind === 'chest' || it.kind === 'frag') && it.t > 20) { const dx = P.x - it.x, dy = P.y - it.y, d = Math.hypot(dx, dy) || 1; if (d < 700) { const s = Math.min(12, 2.5 + (it.t - 20) * 0.08); it.x += dx / d * s; it.y += dy / d * s; } }
     if ((it.x - P.x) ** 2 + (it.y - P.y) ** 2 < 30 * 30) {
       items.splice(i, 1); AU.sfx('pick'); buzz(30);
       if (it.kind === 'chest') openChest();
+      else if (it.kind === 'frag') onFrag(it.ft);
       else if (it.kind === 'power') { gainPower(it.v || 1); ring(P.x, P.y, 10, 60, '#ffe14d', 16, 4); }
       else if (it.kind === 'heart') { P.hp = Math.min(P.maxHp, P.hp + 2); HUD.heartHit = -1; text(P.x, P.y - 30, '+2 HP', '#ff4d6d', 22); ring(P.x, P.y, 10, 70, '#ff4d6d', 20, 4); flash(0.12, '#ff4d6d'); }
       else { gems.forEach(g => { g.pull = true; g.age = 99; }); text(P.x, P.y - 30, 'MAGNET!', '#4dd6ff', 22); ring(P.x, P.y, 10, 300, '#4dd6ff', 30, 5); flash(0.12, '#4dd6ff'); }
@@ -520,6 +522,7 @@ function update() {
 }
 
 function hurt(dmg, sx, sy) {
+  if (heroHurt(dmg, sx, sy)) return;
   P.hp -= dmg; P.inv = 70; shake(14); buzz(100); AU.sfx('hurt'); G.hitStop = 5; HUD.heartHit = 1; flash(0.35, '#ff2e63'); punch(0.04);
   burst(P.x, P.y, '#ff4d6d', 22, 5); ring(P.x, P.y, 10, 90, '#ff4d6d', 18, 5);
   const dx = P.x - sx, dy = P.y - sy, d = Math.hypot(dx, dy) || 1; P.vx += dx / d * 9; P.vy += dy / d * 9;
@@ -661,9 +664,10 @@ function draw() {
   // items
   for (const it of items) {
     const p = 1 + Math.sin(it.t * 0.12) * 0.15, fy = Math.sin(it.t * 0.06) * 4;
-    const gc = it.kind === 'heart' ? '#ff4d6d' : it.kind === 'power' || it.kind === 'chest' ? '#ffe14d' : '#4dd6ff';
+    const gc = it.kind === 'frag' ? FRAG[it.ft].col : it.kind === 'heart' ? '#ff4d6d' : it.kind === 'power' || it.kind === 'chest' ? '#ffe14d' : '#4dd6ff';
     X.globalCompositeOperation = 'lighter'; glow(it.x, it.y + fy, 34 * p, gc, 0.8); X.globalCompositeOperation = 'source-over'; X.globalAlpha = 1;
     if (it.kind === 'chest') blit(SPR.chest(), it.x, it.y + fy, p * 1.1);
+    else if (it.kind === 'frag') drawFrag(it, fy, p);
     else if (it.kind === 'power') blit(SPR.power(), it.x, it.y + fy, p * (it.v > 1 ? 1.2 : 1), Math.sin(it.t * 0.05) * 0.3);
     else blit(it.kind === 'heart' ? SPR.heart() : SPR.magnet(), it.x, it.y + fy, p * 0.95);
   }
@@ -858,18 +862,7 @@ function drawHud(boss) {
   {
     const owned = UPGRADES.filter(u => u.id !== 'blaster' && LV[u.id] > 0); let lx = 12; const ly = top + (G.mode === 'campaign' ? 68 : 52);
     X.textAlign = 'center'; X.textBaseline = 'middle';
-    // main gun: tier number + progress to next tier
-    HUD.powerPop *= 0.9; const need = POWER_NEED[G.tier] || 1, maxed = G.tier >= TIERS.length - 1;
-    HUD.power = lerp(HUD.power, maxed ? 1 : G.power / need, 0.15);
-    const gs = 1 + HUD.powerPop * 0.15;
-    X.save(); X.translate(lx + 26, ly + 13); X.scale(gs, gs);
-    X.fillStyle = 'rgba(18,21,42,.85)'; X.beginPath(); X.roundRect(-26, -13, 52, 26, 7); X.fill();
-    X.strokeStyle = '#ffe14d'; X.lineWidth = 1.5; X.stroke();
-    X.font = '900 12px system-ui'; X.fillStyle = '#ffe14d'; X.fillText('✦ T' + (G.tier + 1), 0, 0);
-    X.restore();
-    X.fillStyle = 'rgba(255,255,255,.15)'; X.fillRect(lx + 2, ly + 29, 48, 3);
-    X.fillStyle = maxed ? '#ff2e63' : '#ffe14d'; X.fillRect(lx + 2, ly + 29, 48 * HUD.power, 3);
-    lx += 56;
+    lx += drawHeroBadge(lx, ly);
     for (const u of owned) {
       X.fillStyle = 'rgba(18,21,42,.8)'; X.beginPath(); X.roundRect(lx, ly, 26, 26, 7); X.fill();
       X.strokeStyle = u.col + '99'; X.lineWidth = 1.5; X.stroke();
@@ -919,7 +912,7 @@ const scr = document.getElementById('scr'), box = document.getElementById('box')
 function show(html) { box.innerHTML = html; scr.classList.remove('hidden', 'out'); box.querySelectorAll('.in').forEach((el, i) => el.style.animationDelay = (i * 70) + 'ms'); }
 function hide(cb) { scr.classList.add('out'); setTimeout(() => { scr.classList.add('hidden'); scr.classList.remove('out'); cb && cb(); }, 200); }
 const fmt = s => Math.floor(s / 60) + ':' + String(Math.floor(s % 60)).padStart(2, '0');
-function setPlayUi(on) { hudbtn.style.display = on ? 'block' : 'none'; dashBtn.style.display = on ? 'block' : 'none'; }
+function setPlayUi(on) { hudbtn.style.display = on ? 'block' : 'none'; dashBtn.style.display = on ? 'block' : 'none'; ultUi(on); }
 
 function titleScreen() {
   G.state = 'title'; setPlayUi(false); const s = Save.bump(() => {});
@@ -963,7 +956,7 @@ function startNode(type) {
   G.totalT += G.t; resetField(); G.node = type; G.t = 0; G.clearAt = 0;
   G.diffBase = G.sys * 55 + G.step * 12 + (type === 'elite' ? 25 : 0) + (type === 'boss' ? 15 : 0);
   G.stageDur = type === 'battle' ? 45 : type === 'elite' ? 55 : Infinity;
-  G.nextWave = 30; G.nextCore = 15; G.nextBoss = type === 'boss' ? 2.5 : Infinity; G.spawnAcc = 0; G.combo = 0; G.comboT = 0; G.streakIdx = 0; G.slow = 0;
+  G.nextWave = 30; G.nextCore = Infinity; G.nextBoss = type === 'boss' ? 2.5 : Infinity; G.spawnAcc = 0; G.combo = 0; G.comboT = 0; G.streakIdx = 0; G.slow = 0;
   P.x = P.y = WORLD / 2; P.vx = P.vy = 0; P.inv = 90; cam.x = P.x; cam.y = P.y; cam.z = baseZoom() * 1.25;
   nebula.forEach((n, i) => n.c = sys.neb[i % 2]);
   G.state = 'play'; setPlayUi(true);
