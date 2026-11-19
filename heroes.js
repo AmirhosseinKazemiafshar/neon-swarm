@@ -310,8 +310,8 @@ levelUpScreen = function () {
   G.state = 'levelup'; joy = null;
   if (LV.shieldup) G.shield = Math.min(3, G.shield + 1);
   const mix = a => a.sort(() => Math.random() - 0.5), H = hero();
-  const allowedUlt = ULT_LEVELS.filter(l => G.level >= l).length;
-  const skills = mix(UPGRADES.filter(u => u.skill && LV[u.id] < u.max && LV[u.id] < Math.ceil(G.level / 2)));
+  const allowedUlt = Math.min(ultCap(), ULT_LEVELS.filter(l => G.level >= l).length);
+  const skills = mix(UPGRADES.filter(u => u.skill && LV[u.id] < u.max && LV[u.id] < Math.ceil(G.level / 2) && LV[u.id] < skillCap()));
   const cards = mix(UPGRADES.filter(u => !u.skill && LV[u.id] < u.max));
   let pick = [];
   if (G.ult < allowedUlt) pick.push({ id: 'ult', icon: H.ult.icon, col: H.col, name: H.ult.name, max: 3, ult: true, desc: () => H.ult.desc(G.ult + 1) });
@@ -415,6 +415,4 @@ bindTitleExtras = function () {
   const anchor = [...document.querySelectorAll('#box .btn.ghost')].pop(); if (anchor) anchor.after(b);
 };
 
-// ---------- boot ----------
-titleScreen();
-requestAnimationFrame(loop);
+// boot happens at the end of galaxy.js

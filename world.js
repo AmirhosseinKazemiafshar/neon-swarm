@@ -77,16 +77,17 @@ const DIR = {
     return 1 + G.tier * 0.45 + w * 0.22 + Object.keys(EVO).length * 2.5 + (P.might - 1) * 1.6 + (1 / P.haste - 1) * 1.6;
   },
   adapt() { const expected = 1 + D() / 55; return Math.pow(clamp(this.power() / expected, 0.75, 2.6), 0.85); },
-  hpMul() { if (!G.mode || G.state === 'title') return 1; return (G.mode === 'endless' ? Math.pow(1.13, this.wave - 1) : 1) * this.adapt(); },
+  hpMul() { if (!G.mode || G.state === 'title') return 1; return (G.mode === 'endless' ? Math.pow(1.13, this.wave - 1) : 1) * this.adapt() * (G.hpBonus || 1); },
   rateMul() {
     let m = 1;
-    if (G.mode === 'endless') m = this.phase === 'horde' ? Math.min(2.1, 1.25 + 0.12 * this.wave) : this.phase === 'calm' ? 0.12 : 0.7 + 0.5 * this.phaseK;
+    if (G.mode === 'endless' || G.mode === 'stage') m = this.phase === 'horde' ? Math.min(2.1, 1.25 + 0.12 * this.wave) : this.phase === 'calm' ? 0.12 : 0.7 + 0.5 * this.phaseK;
     if (BEACON.active) m *= 1.4;
-    return m;
+    if (G.mode === 'stage' && G.bossOut) m *= G.stageDone ? 0 : 0.4;
+    return m * (G.rateBonus || 1);
   },
-  capMul() { return G.mode !== 'endless' ? 1 : this.phase === 'horde' ? 1.35 : this.phase === 'calm' ? 0.5 : 1; },
+  capMul() { return G.mode !== 'endless' && G.mode !== 'stage' ? 1 : this.phase === 'horde' ? 1.35 : this.phase === 'calm' ? 0.5 : 1; },
   update() {
-    if (G.mode !== 'endless') return;
+    if (G.mode !== 'endless' && G.mode !== 'stage') return;
     const t = G.t % CYCLE; this.wave = Math.floor(G.t / CYCLE) + 1;
     let acc = 0;
     for (const [name, len] of PHASES) { if (t < acc + len) { this.phase = name; this.phaseK = (t - acc) / len; break; } acc += len; }
@@ -99,7 +100,8 @@ const DIR = {
   enter(ph) {
     if (ph === 'build' && this.wave > 1) toast('WAVE ' + this.wave + ' · enemies grow stronger', '#8d93c4');
     if (ph === 'horde') {
-      const boss = this.wave % 3 === 0;
+      if (G.mode === 'stage' && G.bossOut) return;
+      const boss = G.mode === 'endless' && this.wave % 3 === 0;
       banner(boss ? 'HORDE + BOSS' : 'HORDE · WAVE ' + this.wave, '#ff2e63', boss ? 'The Hive Core is coming' : 'Hold your ground', 120);
       G.nextWave = G.t; if (boss) G.nextBoss = G.t; else if (this.wave >= 2) spawnElite();
       AU.sfx('warn'); flash(0.15, '#ff2e63');
@@ -271,7 +273,7 @@ function drawWorldLayer(hw, hh, vis) {
 
 // ---------- HUD: colour grading, phase pill, radar, beacon pointer ----------
 function drawWorldHud() {
-  if (G.mode === 'endless' && G.state !== 'title') {
+  if ((G.mode === 'endless' || G.mode === 'stage') && G.state !== 'title') {
     const ph = DIR.phase;
     if (ph === 'calm') { X.globalAlpha = 0.07; X.fillStyle = '#3cf0ff'; X.fillRect(0, 0, W, H); X.globalAlpha = 1; }
     if (ph === 'horde') { const k = 0.06 + Math.sin(G.frame * 0.1) * 0.03; const vg = X.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.4, W / 2, H / 2, Math.max(W, H) * 0.7); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, `rgba(255,46,99,${k})`); X.fillStyle = vg; X.fillRect(0, 0, W, H); }

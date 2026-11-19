@@ -123,7 +123,7 @@ function updateExtraWeapons() {
 // ---------- per-frame systems ----------
 function featureUpdate() {
   worldUpdate();
-  if (G.t >= G.nextElite && !(G.mode === 'campaign' && G.node === 'boss')) { G.nextElite = G.t + (G.mode === 'campaign' ? 38 : 55); spawnElite(); }
+  if (G.t >= G.nextElite && !G.bossOut && !(G.mode === 'campaign' && G.node === 'boss')) { G.nextElite = G.t + (G.eliteGap || (G.mode === 'campaign' ? 38 : 55)); spawnElite(); }
   G.maxTier = Math.max(G.maxTier, G.tier);
   for (let i = coinDrops.length - 1; i >= 0; i--) {
     const c = coinDrops[i]; c.age++; c.t += 0.15;
