@@ -91,6 +91,8 @@ table.board{width:100%;border-collapse:collapse;font-size:14px;background:var(--
 /* chosen / faded cards must escape the entrance animation's fill */
 .card.chosen{animation:none!important;opacity:1}.card.fade{animation:none!important}
 @media (prefers-reduced-motion:reduce){.card.in{animation:none;opacity:1;transform:none}.beams{animation:none}}
+.tagc{display:inline-block;font-size:10px;font-weight:800;border:1px solid;border-radius:6px;padding:1px 6px;margin-left:6px;vertical-align:2px;white-space:nowrap}
+.sets{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}.sets span{font-size:12px;font-weight:800;border:1.5px solid;border-radius:10px;padding:4px 9px;background:var(--panel)}
 .ad{background:#000;border-radius:14px;padding:38px 10px;color:#aaa;font-size:14px}
 .ad b{display:block;font-size:48px;color:#fff;margin-top:6px}
 .row{display:flex;gap:10px}.row>*{flex:1}
@@ -105,4 +107,5 @@ table.board{width:100%;border-collapse:collapse;font-size:14px;background:var(--
 <script src="sprites.js"></script>
 <script src="game.js"></script>
 <script src="features.js"></script>
+<script src="world.js"></script>
 </body></html>

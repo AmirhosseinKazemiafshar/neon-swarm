@@ -45,6 +45,7 @@ function onNewRun() {
 
 // ---------- explosions, coins ----------
 function explode(x, y, R, color) {
+  if (smokes.length > 120 || flashes.length > 14) R *= 0.8; // crowded screen: keep blasts readable
   ring(x, y, R * 0.2, R, color, 20, 6); ring(x, y, R * 0.1, R * 0.7, '#ffffff', 12, 3);
   burst(x, y, '#ffe9b0', Math.min(24, R / 3 | 0), R / 10, 3, 22); burst(x, y, color, Math.min(20, R / 4 | 0), R / 14, 4, 30);
   for (let i = 0; i < Math.min(9, R / 10 | 0) && smokes.length < 160; i++) {
@@ -90,18 +91,18 @@ function updateExtraWeapons() {
     if (!m.target || m.target.dead) m.target = nearest(m.x, m.y, 620);
     if (m.target && m.t > 8) { const ta = Math.atan2(m.target.y - m.y, m.target.x - m.x); let d = ta - m.ang; d = Math.atan2(Math.sin(d), Math.cos(d)); m.ang += clamp(d, -0.17, 0.17); }
     const sp = Math.min(8.5, 2.5 + m.t * 0.25); m.x += Math.cos(m.ang) * sp; m.y += Math.sin(m.ang) * sp;
-    if (G.frame % 2 === 0 && smokes.length < 160) smokes.push({ x: m.x - Math.cos(m.ang) * 9, y: m.y - Math.sin(m.ang) * 9, vx: 0, vy: 0, r: 3, vr: 0.3, life: 24, max: 24, c: 'rgba(190,190,215,' });
+    if (G.frame % 2 === 0 && smokes.length < 160) smokes.push({ x: m.x - Math.cos(m.ang) * 9, y: m.y - Math.sin(m.ang) * 9, vx: 0, vy: 0, r: 3, vr: 0.3, life: 24, max: 24, c: 'rgba(110,115,150,' });
     let hit = m.life <= 0;
     if (!hit) near(m.x, m.y, 40, e => { if (!e.dead && e.spawnT <= 0 && (e.x - m.x) ** 2 + (e.y - m.y) ** 2 < (e.r + 7) ** 2) { hit = true; return false; } });
     if (hit) {
       missiles.splice(i, 1);
-      const R = (44 + LV.missile * 8) * (EVO.missile ? 1.2 : 1), dmg = (22 + LV.missile * 6) * (EVO.missile ? 1.3 : 1);
+      const R = (44 + LV.missile * 8) * (EVO.missile ? 1.2 : 1) * BLASTR(), dmg = (22 + LV.missile * 6) * (EVO.missile ? 1.3 : 1);
       const blast = (x, y, r, dm) => { explode(x, y, r, '#ff6b3c'); near(x, y, r, e => { const dx = e.x - x, dy = e.y - y, d = Math.hypot(dx, dy) || 1; if (d < r + e.r) damage(e, dm, dx / d * 5, dy / d * 5); }); };
       blast(m.x, m.y, R, dmg);
       if (EVO.missile) for (let k = 0; k < 3; k++) { const a = k * TAU / 3 + Math.random(); blast(m.x + Math.cos(a) * R * 0.8, m.y + Math.sin(a) * R * 0.8, R * 0.55, dmg * 0.5); }
     }
   }
-  const dn = LV.drone ? (EVO.drone ? 5 : 1 + (LV.drone >= 3) + (LV.drone >= 5)) : 0;
+  const dn = LV.drone ? (EVO.drone ? 5 : 1 + (LV.drone >= 3) + (LV.drone >= 5)) + (SETB.tech3 ? 1 : 0) : 0;
   while (drones.length < dn) drones.push({ x: P.x, y: P.y, cd: 20 + drones.length * 7, ang: 0 });
   drones.length = dn;
   drones.forEach((d, i) => {
@@ -110,7 +111,7 @@ function updateExtraWeapons() {
     if (--d.cd <= 0) {
       const t = nearest(d.x, d.y, 380);
       if (t) {
-        d.cd = (EVO.drone ? 22 : 46 - LV.drone * 4) * P.haste; d.ang = Math.atan2(t.y - d.y, t.x - d.x);
+        d.cd = (EVO.drone ? 22 : 46 - LV.drone * 4) * P.haste * (SETB.tech6 ? 0.65 : 1); d.ang = Math.atan2(t.y - d.y, t.x - d.x);
         const shots = EVO.drone ? 2 : 1;
         for (let k = 0; k < shots; k++) { const off = (k - (shots - 1) / 2) * 7; bullets.push({ x: d.x - Math.sin(d.ang) * off, y: d.y + Math.cos(d.ang) * off, vx: Math.cos(d.ang) * 12, vy: Math.sin(d.ang) * 12, life: 40, pierce: 0, dmg: (8 + LV.drone * 2) * (EVO.drone ? 1.4 : 1), hitSet: null, lv: 1 }); }
         if (AU.ok('drone', 90)) AU.tone(1500, 0.03, 'square', 0.012, -500);
@@ -121,6 +122,7 @@ function updateExtraWeapons() {
 
 // ---------- per-frame systems ----------
 function featureUpdate() {
+  worldUpdate();
   if (G.t >= G.nextElite && !(G.mode === 'campaign' && G.node === 'boss')) { G.nextElite = G.t + (G.mode === 'campaign' ? 38 : 55); spawnElite(); }
   G.maxTier = Math.max(G.maxTier, G.tier);
   for (let i = coinDrops.length - 1; i >= 0; i--) {
@@ -148,7 +150,7 @@ function drawExtrasWorld() {
   // smoke (behind everything bright)
   for (let i = smokes.length - 1; i >= 0; i--) {
     const s = smokes[i]; s.x += s.vx; s.y += s.vy; s.vx *= 0.92; s.vy *= 0.92; s.r += s.vr; s.vr *= 0.95;
-    X.fillStyle = s.c + (0.42 * s.life / s.max).toFixed(3) + ')'; X.beginPath(); X.arc(s.x, s.y, s.r, 0, TAU); X.fill();
+    X.fillStyle = s.c + (0.3 * s.life / s.max).toFixed(3) + ')'; X.beginPath(); X.arc(s.x, s.y, s.r, 0, TAU); X.fill();
     if (--s.life <= 0) smokes.splice(i, 1);
   }
   for (const c of coinDrops) { const sp = Math.cos(c.t); blit(SPR.coin(), c.x, c.y + Math.sin(c.t * 0.7) * 1.5, 1, 0, Math.abs(sp) * 0.75 + 0.25, 1); }
@@ -212,6 +214,7 @@ function postFX() {
 // ---------- HUD extras ----------
 function toast(s, color = '#fff') { toasts.push({ s, color, life: 170, max: 170 }); if (toasts.length > 3) toasts.shift(); }
 function drawFeatureHud() {
+  drawWorldHud();
   X.textAlign = 'center'; X.textBaseline = 'middle';
   toasts.forEach((t, i) => {
     const k = t.life / t.max, inK = Math.min(1, (t.max - t.life) / 12), y = H - 150 - i * 30 - G.cineH;
@@ -369,6 +372,4 @@ function bindTitleExtras() {
   const snd = document.getElementById('snd'); if (snd) snd.after(b); else box2.appendChild(b);
 }
 
-// ---------- boot ----------
-titleScreen();
-requestAnimationFrame(loop);
+// boot happens at the end of world.js
