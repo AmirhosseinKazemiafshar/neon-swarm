@@ -40,7 +40,7 @@ canvas{display:block}
 #hudbtn{position:fixed;top:max(10px,env(safe-area-inset-top));right:10px;z-index:4;width:40px;height:40px;border-radius:12px;border:1px solid #2a3060;background:rgba(18,21,42,.7);color:var(--ink);font-size:16px;cursor:pointer;display:none}
 .card.chosen{transform:scale(1.05);border-color:var(--gold)!important;box-shadow:0 0 0 2px var(--gold),0 0 40px rgba(255,201,77,.45);transition:transform .2s var(--ease),box-shadow .2s}
 .card.fade{opacity:0;transform:translateY(10px) scale(.96);transition:opacity .18s,transform .18s}
-.screen.out{animation:fadeout .22s ease-in forwards}@keyframes fadeout{to{opacity:0}}
+.screen.out{animation:fadeout .15s ease-in forwards;pointer-events:none}@keyframes fadeout{to{opacity:0}}
 #dash{position:fixed;right:max(18px,env(safe-area-inset-right));bottom:max(26px,env(safe-area-inset-bottom));z-index:4;width:78px;height:78px;border-radius:50%;border:0;padding:4px;cursor:pointer;display:none;background:conic-gradient(var(--cyan) var(--p,100%),rgba(255,255,255,.08) 0);transition:transform .12s var(--ease)}
 #ult{position:fixed;right:max(26px,env(safe-area-inset-right));bottom:max(118px,calc(env(safe-area-inset-bottom) + 92px));z-index:4;width:62px;height:62px;border-radius:50%;border:0;padding:4px;cursor:pointer;display:none;background:conic-gradient(var(--uc,#ffc94d) var(--p,0%),rgba(255,255,255,.08) 0);transition:transform .12s var(--ease)}
 #ult span{display:flex;flex-direction:column;width:100%;height:100%;border-radius:50%;align-items:center;justify-content:center;background:rgba(12,15,32,.9);color:var(--uc,#ffc94d);font:900 11px system-ui;letter-spacing:.5px;line-height:1.1}
@@ -113,6 +113,7 @@ table.board{width:100%;border-collapse:collapse;font-size:14px;background:var(--
 .rec{font-size:11px}.rec i{font-style:normal}
 .card p b{color:var(--ink);font-size:inherit;font-weight:800}.card p.tip{font-size:11.5px;color:#7f86c0;margin-top:4px;font-style:italic}
 .build{display:grid;grid-template-columns:1fr 1fr;gap:6px;text-align:left;max-height:38vh;overflow-y:auto}.build div{background:var(--panel);border:1px solid #23284d;border-radius:12px;padding:7px 9px;font-size:12px}.build span{margin-right:5px}.build em{font-style:normal;color:var(--gold);font-size:10px;margin-left:5px}.build p{margin:2px 0 0;color:var(--muted);font-size:10.5px;line-height:1.3}
+.pvcard{gap:10px;padding:10px 12px 10px 10px}.pv{flex:0 0 92px;width:92px;height:60px;border-radius:12px;background:#0b0e20;box-shadow:inset 0 0 0 1px #2a3060}
 .ad{background:#000;border-radius:14px;padding:38px 10px;color:#aaa;font-size:14px}
 .ad b{display:block;font-size:48px;color:#fff;margin-top:6px}
 .row{display:flex;gap:10px}.row>*{flex:1}
@@ -124,10 +125,11 @@ table.board{width:100%;border-collapse:collapse;font-size:14px;background:var(--
 <button id="hudbtn" aria-label="Pause">❚❚</button>
 <button id="dash" aria-label="Dash"><span>DASH</span></button>
 <div id="scr" class="screen"><div class="box" id="box"></div></div>
-<script src="sprites.js?v=1795182173"></script>
-<script src="game.js?v=1795182173"></script>
-<script src="features.js?v=1795182173"></script>
-<script src="world.js?v=1795182173"></script>
-<script src="heroes.js?v=1795182173"></script>
-<script src="galaxy.js?v=1795182173"></script>
+<script src="sprites.js?v=1795183327"></script>
+<script src="game.js?v=1795183327"></script>
+<script src="features.js?v=1795183327"></script>
+<script src="world.js?v=1795183327"></script>
+<script src="heroes.js?v=1795183327"></script>
+<script src="galaxy.js?v=1795183327"></script>
+<script src="previews.js?v=1795183327"></script>
 </body></html>

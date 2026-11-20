@@ -285,7 +285,7 @@ function openChest(auto) {
       b.onclick = null;
       for (const r of rewards) { if (r.kind === 'evo') { EVO[r.v.w] = true; G.evolved++; } else if (r.kind === 'up') applyUpgrade(r.u); else gainPower(1); }
       G.coins += coins; AU.sfx('pick');
-      hide(() => {
+      resume(() => {
         G.state = 'play'; setPlayUi(true); P.inv = Math.max(P.inv, 60);
         if (evoHit) { banner('EVOLUTION · ' + rewards[0].name.toUpperCase(), rewards[0].col, rewards[0].desc, 160); explode(P.x, P.y, 220, rewards[0].col); flash(0.5, rewards[0].col); punch(0.1); }
         else { ring(P.x, P.y, 10, 150, '#ffc94d', 28, 6); burst(P.x, P.y, '#ffc94d', 30, 6, 3); }

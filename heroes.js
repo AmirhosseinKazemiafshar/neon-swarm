@@ -354,7 +354,7 @@ levelUpScreen = function () {
     pick.map((u, i) => {
       const lv = u.ult ? G.ult + 1 : (LV[u.id] || 0) + 1, cls = u.ult ? 'r-legend' : u.skill ? 'r-epic' : 'r-rare';
       const kind = u.ult ? 'ULTIMATE' : u.skill ? H.name.toUpperCase() + ' SKILL' : 'CARD';
-      return `<button class="card in ${cls}" data-i="${i}"><div class="ic" style="color:${u.col};box-shadow:inset 0 0 0 1.5px ${u.col}66">${u.icon}</div><div><small class="kind" style="color:${u.col}">${kind}</small><b>${u.name}</b>${u.max < 99 ? `<span class="lvl">${lv === 1 ? 'NEW' : 'Lv ' + (lv - 1) + ' → ' + lv}</span>` : ''}<p>${u.desc(lv)}</p>${u.tip ? `<p class="tip">${u.group ? u.group + ' · ' : ''}${u.tip}</p>` : ''}${u.max < 99 && u.max > 1 ? `<div class="pips">${Array.from({ length: u.max }, (_, k) => `<i class="${k < lv - 1 ? 'on' : k === lv - 1 ? 'next' : ''}"></i>`).join('')}</div>` : ''}</div></button>`;
+      return `<button class="card in pvcard ${cls}" data-i="${i}">${typeof pv === 'function' ? pv(u) : u.icon}<div><small class="kind" style="color:${u.col}">${kind}</small><b>${u.name}</b>${u.max < 99 ? `<span class="lvl">${lv === 1 ? 'NEW' : 'Lv ' + (lv - 1) + ' → ' + lv}</span>` : ''}<p>${u.desc(lv)}</p>${u.max < 99 && u.max > 1 ? `<div class="pips">${Array.from({ length: u.max }, (_, k) => `<i class="${k < lv - 1 ? 'on' : k === lv - 1 ? 'next' : ''}"></i>`).join('')}</div>` : ''}</div></button>`;
     }).join('') + `<button class="btn ghost in" id="rr" style="font-size:14px;padding:10px">↻ Reroll ${G.rerolls > 0 ? '· ' + G.rerolls + ' left' : '· watch ad'}</button>`);
   document.getElementById('rr').onclick = () => { AU.sfx('ui'); if (G.rerolls > 0) { G.rerolls--; levelUpScreen(); } else rewardedAd(levelUpScreen, levelUpScreen); };
   let chosen = false;
@@ -363,10 +363,10 @@ levelUpScreen = function () {
     const u = pick[+b.dataset.i]; AU.sfx('pick'); buzz(20);
     b.classList.add('chosen'); box.querySelectorAll('.card,.h2,.lv').forEach(c => { if (c !== b) c.classList.add('fade'); });
     if (u.ult) G.ult++; else if (u.id === 'heal') P.hp = P.maxHp; else applyUpgrade(u);
-    setTimeout(() => hide(() => {
+    resume(() => {
       G.state = 'play'; setPlayUi(true); P.inv = Math.max(P.inv, 45);
       text(P.x, P.y - 34, u.name.toUpperCase(), u.col, 20); ring(P.x, P.y, 10, 120, u.col, 26, 5); burst(P.x, P.y, u.col, 26, 5, 3); flash(0.15, u.col);
-    }), 260);
+    });
   });
 };
 

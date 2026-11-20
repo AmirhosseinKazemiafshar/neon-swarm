@@ -220,7 +220,7 @@ function beaconReward(b) {
   let picked = false;
   box.querySelectorAll('[data-b]').forEach(el => el.onclick = () => {
     if (picked) return; picked = true; const o = opts[+el.dataset.b]; AU.sfx('pick'); el.classList.add('chosen');
-    setTimeout(() => hide(() => {
+    resume(() => {
       G.state = 'play'; setPlayUi(true); P.inv = Math.max(P.inv, 60);
       if (o.k === 'chest') openChest();
       else if (o.k === 'repair') { P.hp = Math.min(P.maxHp, P.hp + 3); HUD.heartHit = -1; }
@@ -228,7 +228,7 @@ function beaconReward(b) {
       else if (o.k === 'relic') { relic.f(); G.relics.push(relic.id); toast('◆ ' + relic.name, '#ff2e63'); }
       else if (o.k === 'coins') G.coins += 60;
       else { gems.forEach(g => { g.pull = true; g.age = 99; }); coinDrops.forEach(c => c.pull = true); ring(P.x, P.y, 10, 400, '#4dd6ff', 34, 6); }
-    }), 240);
+    });
   });
 }
 

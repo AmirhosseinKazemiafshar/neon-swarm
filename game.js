@@ -925,7 +925,13 @@ function drawHud(boss) {
 
 // ---------- screens ----------
 const scr = document.getElementById('scr'), box = document.getElementById('box'), hudbtn = document.getElementById('hudbtn');
-function show(html) { box.innerHTML = html; scr.classList.remove('hidden', 'out'); box.querySelectorAll('.in').forEach((el, i) => el.style.animationDelay = (i * 70) + 'ms'); }
+function show(html) { scrGen++; box.innerHTML = html; scr.classList.remove('hidden', 'out'); box.querySelectorAll('.in').forEach((el, i) => el.style.animationDelay = (i * 70) + 'ms'); }
+// resume the game the moment a choice is made; the menu just fades out on top (no waiting)
+let scrGen = 0;
+function resume(cb) {
+  scr.classList.add('out'); const gen = scrGen; cb && cb();
+  setTimeout(() => { if (gen === scrGen) { scr.classList.add('hidden'); scr.classList.remove('out'); } }, 150);
+}
 function hide(cb) { scr.classList.add('out'); setTimeout(() => { scr.classList.add('hidden'); scr.classList.remove('out'); cb && cb(); }, 200); }
 const fmt = s => Math.floor(s / 60) + ':' + String(Math.floor(s % 60)).padStart(2, '0');
 function setPlayUi(on) { hudbtn.style.display = on ? 'block' : 'none'; dashBtn.style.display = on ? 'block' : 'none'; ultUi(on); }
@@ -1239,10 +1245,14 @@ function loop(now) {
     if (!stepped && G.state === 'play') { requestAnimationFrame(loop); return; }
   } else if (G.state === 'title') updateTitle();
   else { if (G.state === 'over') G.deathT++; updateCamera(); }
+  // while a menu is open the world is frozen: draw it once, then leave the GPU free for the menu
+  const menu = G.state === 'levelup' || G.state === 'chest' || G.state === 'beacon' || G.state === 'pause' || G.state === 'map';
+  if (menu) { if (menuDrawnFor === G.state) { requestAnimationFrame(loop); return; } menuDrawnFor = G.state; } else menuDrawnFor = null;
   syncButtons();
   draw();
   requestAnimationFrame(loop);
 }
+let menuDrawnFor = null;
 // camera runs on the same 60 Hz clock as the game so the hero and the world never drift apart
 function updateCamera() {
   if (G.state !== 'title') {
