@@ -553,7 +553,7 @@ function gainXp(v) {
     G.xp -= G.xpNeed; G.level++; G.xpNeed = Math.floor(G.xpNeed * 1.33 + 6); // fewer, more meaningful level-ups HUD.levelPop = 1;
     AU.sfx('level'); buzz(50); ring(P.x, P.y, 10, 170, '#ffe14d', 30, 7); ring(P.x, P.y, 10, 120, '#ffffff', 20, 3); burst(P.x, P.y, '#ffe14d', 34, 6, 3);
     flash(0.3, '#ffe14d'); punch(0.08);
-    G.slow = 26;
+    G.slow = 1; // open the level-up on the next frame (the old slow-motion read as lag)
   }
 }
 
@@ -925,7 +925,7 @@ function drawHud(boss) {
 
 // ---------- screens ----------
 const scr = document.getElementById('scr'), box = document.getElementById('box'), hudbtn = document.getElementById('hudbtn');
-function show(html) { scrGen++; box.innerHTML = html; scr.classList.remove('hidden', 'out'); box.querySelectorAll('.in').forEach((el, i) => el.style.animationDelay = (i * 70) + 'ms'); }
+function show(html) { scrGen++; box.innerHTML = html; scr.classList.remove('hidden', 'out'); box.querySelectorAll('.in').forEach((el, i) => el.style.animationDelay = (i * 35) + 'ms'); }
 // resume the game the moment a choice is made; the menu just fades out on top (no waiting)
 let scrGen = 0;
 function resume(cb) {

@@ -69,7 +69,8 @@ table.board{width:100%;border-collapse:collapse;font-size:14px;background:var(--
 .card.r-common{border-color:#2a3060!important}
 .card.r-rare{border-color:#3c9bff!important;box-shadow:0 0 18px rgba(60,155,255,.22)}
 .card.r-epic{border-color:#b06bff!important;box-shadow:0 0 22px rgba(176,107,255,.3);background:linear-gradient(135deg,#1b1640,var(--panel) 60%)}
-.card.in{animation:flip .5s var(--ease) forwards;transform:perspective(700px) rotateY(80deg);opacity:0}
+.card.in{animation:cardin .22s ease-out forwards;transform:translateY(10px);opacity:0}
+@keyframes cardin{to{transform:none;opacity:1}}
 @keyframes flip{to{transform:none;opacity:1}}
 .chestwrap{position:relative;height:150px;display:flex;align-items:center;justify-content:center}
 .chestimg{width:120px;position:relative;z-index:1;animation:pop .6s var(--ease) both,bob 1.6s ease-in-out .6s infinite}
@@ -125,11 +126,11 @@ table.board{width:100%;border-collapse:collapse;font-size:14px;background:var(--
 <button id="hudbtn" aria-label="Pause">❚❚</button>
 <button id="dash" aria-label="Dash"><span>DASH</span></button>
 <div id="scr" class="screen"><div class="box" id="box"></div></div>
-<script src="sprites.js?v=1795183332"></script>
-<script src="game.js?v=1795183332"></script>
-<script src="features.js?v=1795183332"></script>
-<script src="world.js?v=1795183332"></script>
-<script src="heroes.js?v=1795183332"></script>
-<script src="galaxy.js?v=1795183332"></script>
-<script src="previews.js?v=1795183332"></script>
+<script src="sprites.js?v=1795183609"></script>
+<script src="game.js?v=1795183609"></script>
+<script src="features.js?v=1795183609"></script>
+<script src="world.js?v=1795183609"></script>
+<script src="heroes.js?v=1795183609"></script>
+<script src="galaxy.js?v=1795183609"></script>
+<script src="previews.js?v=1795183609"></script>
 </body></html>
