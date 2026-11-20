@@ -876,14 +876,19 @@ function drawHud(boss) {
   X.fillText(clock, W / 2, top + 16);
   // loadout: every owned weapon / passive with its level pips
   {
-    const owned = UPGRADES.filter(u => u.id !== 'blaster' && LV[u.id] > 0); let lx = 12; const ly = top + (G.mode === 'campaign' ? 68 : 52);
+    const owned = UPGRADES.filter(u => u.id !== 'blaster' && LV[u.id] > 0); let lx = 12; const ly = H - 46 - G.cineH - 40; // bottom-left, above the item slots: keeps the top of the screen clear
     X.textAlign = 'center'; X.textBaseline = 'middle';
     lx += drawHeroBadge(lx, ly);
+    // one tidy grid: 26 px tiles, 4 px gaps, level pips centred under each tile, wraps before the score column
+    const x0 = 12, maxX = W - 104; let row = 0; // stop before the Dash / Ultimate buttons
     for (const u of owned) {
-      X.fillStyle = 'rgba(18,21,42,.8)'; X.beginPath(); X.roundRect(lx, ly, 26, 26, 7); X.fill();
-      X.strokeStyle = u.col + '99'; X.lineWidth = 1.5; X.stroke();
-      X.font = '700 14px system-ui'; X.fillStyle = u.col; X.fillText(u.icon, lx + 13, ly + 13);
-      for (let k = 0; k < u.max; k++) { X.fillStyle = k < LV[u.id] ? '#ffc94d' : 'rgba(255,255,255,.15)'; X.fillRect(lx + 2 + k * 4.6, ly + 29, 3.4, 2.5); }
+      if (lx + 26 > maxX) { row++; lx = x0; }
+      const ty = ly - row * 38; // extra rows stack upward
+      X.fillStyle = 'rgba(18,21,42,.85)'; X.beginPath(); X.roundRect(lx + 0.5, ty + 0.5, 26, 26, 7); X.fill();
+      X.strokeStyle = u.col + 'aa'; X.lineWidth = 1.5; X.stroke();
+      X.font = '700 13px system-ui'; X.textAlign = 'center'; X.textBaseline = 'middle'; X.fillStyle = u.col; X.fillText(u.icon, lx + 13.5, ty + 14);
+      const pw = Math.min(5, (24 - (u.max - 1) * 2) / u.max), tot = u.max * pw + (u.max - 1) * 2, p0 = lx + 13.5 - tot / 2;
+      for (let k = 0; k < u.max; k++) { X.fillStyle = k < LV[u.id] ? '#ffc94d' : 'rgba(255,255,255,.16)'; X.fillRect(p0 + k * (pw + 2), ty + 30, pw, 3); }
       lx += 30;
     }
   }
@@ -919,7 +924,7 @@ function drawHud(boss) {
   }
   if (G.t < 5 && G.state === 'play') {
     X.globalAlpha = Math.min(1, (5 - G.t)); X.font = '600 15px system-ui'; X.fillStyle = 'rgba(255,255,255,.85)';
-    X.fillText('Drag anywhere to fly · tap DASH to dodge', W / 2, H - 130); X.globalAlpha = 1;
+    X.fillText('Drag anywhere to fly · tap DASH to dodge', W / 2, H * 0.64); X.globalAlpha = 1;
   }
 }
 
@@ -932,7 +937,7 @@ function resume(cb) {
   scr.classList.add('out'); const gen = scrGen; cb && cb();
   setTimeout(() => { if (gen === scrGen) { scr.classList.add('hidden'); scr.classList.remove('out'); } }, 150);
 }
-function hide(cb) { scr.classList.add('out'); setTimeout(() => { scr.classList.add('hidden'); scr.classList.remove('out'); cb && cb(); }, 200); }
+function hide(cb) { scr.classList.add('out'); const gen = scrGen; setTimeout(() => { if (gen === scrGen) { scr.classList.add('hidden'); scr.classList.remove('out'); } cb && cb(); }, 200); } // never hide a screen that opened meanwhile
 const fmt = s => Math.floor(s / 60) + ':' + String(Math.floor(s % 60)).padStart(2, '0');
 function setPlayUi(on) { hudbtn.style.display = on ? 'block' : 'none'; dashBtn.style.display = on ? 'block' : 'none'; ultUi(on); }
 
@@ -1222,7 +1227,7 @@ function togglePause() {
     document.getElementById('res').onclick = togglePause;
     document.getElementById('snd').onclick = e => { AU.on = !AU.on; Save.bump(s => s.sound = AU.on); e.target.textContent = 'Sound: ' + (AU.on ? 'ON' : 'OFF'); };
     document.getElementById('quit').onclick = () => { hide(); P.hp = 0; gameOver(); };
-  } else if (G.state === 'pause') { hide(() => { G.state = 'play'; setPlayUi(true); }); }
+  } else if (G.state === 'pause') { resume(() => { G.state = 'play'; setPlayUi(true); }); }
 }
 hudbtn.onclick = togglePause;
 document.addEventListener('visibilitychange', () => { if (document.hidden && G.state === 'play') togglePause(); });

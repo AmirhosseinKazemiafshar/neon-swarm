@@ -380,10 +380,15 @@ let ultLast = '';
 function drawHeroBadge(lx, ly) {
   if (!G.hero) return 0;
   const H = hero();
-  X.fillStyle = 'rgba(18,21,42,.85)'; X.beginPath(); X.roundRect(lx, ly, 50, 26, 7); X.fill(); X.strokeStyle = H.col; X.lineWidth = 1.5; X.stroke();
-  X.font = '900 11px system-ui'; X.textAlign = 'center'; X.textBaseline = 'middle'; X.fillStyle = H.col;
-  X.fillText(H.icon + ' ' + (G.shield > 0 ? '⛨' + G.shield : H.name.slice(0, 5).toUpperCase()), lx + 25, ly + 13);
-  for (let k = 0; k < 3; k++) { X.fillStyle = k < G.ult ? '#ff2e63' : 'rgba(255,255,255,.15)'; X.fillRect(lx + 4 + k * 15, ly + 29, 12, 2.5); }
+  // badge sized to its label (no text touching the border), Ultimate rank pips centred underneath
+  const label = H.icon + ' ' + (G.shield > 0 ? '⛨ ' + G.shield : H.name.toUpperCase().slice(0, 5));
+  X.font = '800 10px system-ui'; const bw = Math.ceil(X.measureText(label).width) + 18;
+  X.fillStyle = 'rgba(18,21,42,.88)'; X.beginPath(); X.roundRect(lx + 0.5, ly + 0.5, bw, 26, 8); X.fill();
+  X.strokeStyle = H.col; X.lineWidth = 1.5; X.stroke();
+  X.textAlign = 'center'; X.textBaseline = 'middle'; X.fillStyle = H.col; X.fillText(label, lx + 0.5 + bw / 2, ly + 14);
+  const pw = 7, pg = 3, px0 = lx + 0.5 + bw / 2 - (3 * pw + 2 * pg) / 2;
+  for (let k = 0; k < 3; k++) { X.fillStyle = k < G.ult ? '#ff2e63' : 'rgba(255,255,255,.16)'; X.beginPath(); X.roundRect(px0 + k * (pw + pg), ly + 30, pw, 3, 1.5); X.fill(); }
+  HUD.badgeW = bw;
   // item slots + held fragment, bottom-left
   const by = H_screenBottom();
   for (let k = 0; k < 3; k++) {
@@ -397,7 +402,7 @@ function drawHeroBadge(lx, ly) {
   const pct = G.ult ? Math.round(G.ultCharge * 100) : 0, st = G.ult ? (G.ultActive > 0 ? 'ON' : pct >= 100 ? 'READY' : pct + '%') : 'LV 6';
   const key = pct + st + G.ult;
   if (key !== ultLast) { ultLast = key; ultBtn.style.setProperty('--p', pct + '%'); ultBtn.style.setProperty('--uc', H.col); ultBtn.classList.toggle('ready', G.ult > 0 && pct >= 100); ultBtn.innerHTML = `<span>${H.ult.icon}<small>${st}</small></span>`; }
-  return 56;
+  return (HUD.badgeW || 56) + 6;
 }
 const H_screenBottom = () => H - 46 - G.cineH;
 

@@ -126,7 +126,7 @@ drawFeatureHud = function () {
 const _drawWorldLayerG = drawWorldLayer;
 drawWorldLayer = function (hw, hh, vis) {
   _drawWorldLayerG(hw, hh, vis);
-  if (G.mode === 'stage') { X.globalAlpha = G.nightmare ? 0.14 : 0.08; X.fillStyle = G.nightmare ? '#ff2e63' : GAL[G.sys].col; X.fillRect(cam.x - hw, cam.y - hh, hw * 2, hh * 2); X.globalAlpha = 1; }
+  if (G.mode === 'stage') { X.globalAlpha = G.nightmare ? 0.1 : 0.045; X.fillStyle = G.nightmare ? '#ff2e63' : GAL[G.sys].col; X.fillRect(cam.x - hw, cam.y - hh, hw * 2, hh * 2); X.globalAlpha = 1; }
 };
 
 function rewardCrystals(win) {
@@ -283,7 +283,7 @@ renderShipSel = function () {
   el.innerHTML = `<button class="arrow" id="shp" aria-label="Previous hero">‹</button>
     <div class="shipcard ${open ? '' : 'locked'}"><canvas id="shipcv" width="112" height="112"></canvas>
       <div><b style="color:${open ? H.col : ''}">${H.icon} ${H.name}</b><p>${H.passive}</p><small>${H.q.name} · ${H.w.name} · ULT ${H.ult.name}</small>
-      ${open ? (sel ? `<em>SELECTED · MASTERY ${ml}</em>` : '<button class="mini" id="shsel">Select</button>') : `<button class="mini" disabled>🔒 ⭐ ${HERO_GATE[id]} stars</button>`}</div></div>
+      ${open ? (sel ? `<em>✓ SELECTED</em><span class="mst">Mastery ${ml}</span>` : '<button class="mini" id="shsel">Select</button>') : `<button class="mini" disabled>🔒 ⭐ ${HERO_GATE[id]} stars</button>`}</div></div>
     <button class="arrow" id="shn" aria-label="Next hero">›</button>`;
   const cv = document.getElementById('shipcv'), g = cv.getContext('2d'), sp = SPR.ship(id);
   g.save(); g.translate(56, 56); g.rotate(-Math.PI / 2); g.globalAlpha = open ? 1 : 0.35; g.drawImage(sp, -sp.w * 0.8, -sp.h * 0.8, sp.w * 1.6, sp.h * 1.6); g.restore();
