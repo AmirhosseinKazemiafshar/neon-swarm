@@ -27,8 +27,9 @@ const MODS = [
   { id: 'elites', name: 'Elite patrols', desc: 'Elites every 45 s (more fragments)', apply() { G.eliteGap = 45; } },
   { id: 'bounty', name: 'Bounty zone', desc: 'Enemies drop twice the coins', apply() { G.bounty = true; } },
 ];
-const BASE_CARDS = ['front', 'diag', 'rapid', 'big', 'crit', 'pierce', 'burn', 'freeze'];
-const RESEARCH = { side: 60, rear: 50, homing: 80, poison: 70, ricochet: 90, explosive: 100, shieldup: 90, leech: 110, split: 120, headshot: 150 };
+// 7 cards at the start (one evolution, Inferno Shells, is reachable from the first run); the rest are researched
+const BASE_CARDS = ['front', 'diag', 'rapid', 'big', 'burn', 'freeze', 'explosive'];
+const RESEARCH = { side: 60, crit: 60, pierce: 70, poison: 70, homing: 80, ricochet: 90, split: 110 };
 const BASE_ITEMS = ['overcharger', 'titan', 'forge', 'glacier'];
 const BLUEPRINT = { magnetron: 80, inferno: 90, steam: 100, cryo: 100, bulwark: 110, plasma: 120 };
 const MASTERY = [0, 150, 500, 1200, 2500];
@@ -328,6 +329,7 @@ titleScreen = function () {
   mk(() => 'Sound ' + (AU.on ? 'on' : 'off'), () => { AU.on = !AU.on; Save.bump(x => x.sound = AU.on); });
   mk(() => 'Graphics ' + ({ auto: 'auto', high: 'high', low: 'low' }[Save.get().gfx || 'auto']), () => { const o = ['auto', 'high', 'low'], c = Save.get().gfx || 'auto', n = o[(o.indexOf(c) + 1) % 3]; Save.bump(x => x.gfx = n); Q.light = n !== 'low'; Q.bloom = n === 'high'; LOWRES = n === 'low'; resize(); });
   mk(() => 'Shake ' + (SETTINGS.shake === 1 ? 'full' : SETTINGS.shake ? 'low' : 'off'), () => { SETTINGS.shake = SETTINGS.shake === 1 ? 0.5 : SETTINGS.shake ? 0 : 1; Save.bump(x => x.shake = SETTINGS.shake); });
+  mk(() => 'Vibration ' + (SETTINGS.vibe === false ? 'off' : 'on'), () => { SETTINGS.vibe = SETTINGS.vibe === false; Save.bump(x => x.vibe = SETTINGS.vibe); if (SETTINGS.vibe) buzz(30); });
   mk(() => SETTINGS.control === 'stop' ? 'Stop to shoot' : 'Auto-fire', () => { SETTINGS.control = SETTINGS.control === 'stop' ? 'auto' : 'stop'; Save.bump(x => x.control = SETTINGS.control); });
 };
 // hangar / records "back" returns to this title automatically (they call titleScreen)

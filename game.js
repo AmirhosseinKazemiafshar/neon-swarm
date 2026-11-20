@@ -250,7 +250,7 @@ function text(x, y, s, color = '#fff', size = 15) { if (texts.length < 90) texts
 function shake(v) { const m = SETTINGS.shake; if (REDUCED || !m) return; G.shake = Math.min(0.85, G.shake + v / 55 * m); }
 function flash(a, color = '#fff') { if (!REDUCED) { G.flash = Math.max(G.flash, a); G.flashCol = color; } }
 function punch(z) { if (!REDUCED) cam.punch = Math.max(cam.punch, z); }
-function buzz(ms) { try { if (navigator.vibrate && (!navigator.userActivation || navigator.userActivation.hasBeenActive)) navigator.vibrate(ms); } catch (e) {} }
+function buzz(ms) { if (typeof SETTINGS !== 'undefined' && SETTINGS.vibe === false) return; try { if (navigator.vibrate && (!navigator.userActivation || navigator.userActivation.hasBeenActive)) navigator.vibrate(ms); } catch (e) {} }
 function banner(s, color = '#fff', sub = '', life = 150) { G.banner = { s, sub, color, life, max: life }; }
 
 // ---------- spawning ----------
@@ -270,13 +270,17 @@ function pickType() {
 }
 
 // ---------- damage ----------
+function drawPlayerBullets() { for (const b of bullets) blit(SPR.bolt(), b.x, b.y, 0.9 + b.lv * 0.12, Math.atan2(b.vy, b.vx)); }
+function onCrit(e, amount) {}
 function damage(e, dmg, kx = 0, ky = 0) {
   if (e.dead) return;
   const crit = Math.random() < P.crit, amount = Math.round(dmg * P.might * (crit ? (SETB.blade6 ? 2.6 : 2) : 1));
   e.hp -= amount; e.flash = 6; e.sq = 1; if (crit && SETB.arc6) arcSpark(e);
   const kb = e.type === 'boss' ? 0.1 : e.type === 'tank' ? 0.4 : 1;
   e.vx += kx * kb; e.vy += ky * kb;
-  if (e.elite || e.type === 'boss' || texts.length < (crit ? 22 : 10)) text(e.x + rnd(-6, 6), e.y - e.r, crit ? amount + '!' : String(amount), crit ? '#ffe14d' : '#ffffff', crit ? 20 : 14);
+  if (crit) onCrit(e, amount);
+  // numbers only where they matter (crits, elites, bosses): a calmer screen
+  if (crit ? texts.length < 22 : (e.elite || e.type === 'boss') && texts.length < 14) text(e.x + rnd(-6, 6), e.y - e.r, crit ? amount + '!' : String(amount), crit ? '#ffe14d' : '#ffffff', crit ? 20 : 14);
   AU.sfx('hit');
   if (e.type === 'boss' && crit) shake(2);
   if (e.hp <= 0) kill(e);
@@ -467,7 +471,7 @@ function update() {
       if (e.dead || e.spawnT > 0 || (b.hitSet && b.hitSet.has(e))) return;
       if ((e.x - b.x) ** 2 + (e.y - b.y) ** 2 < (e.r + 5) ** 2) {
         damage(e, b.dmg, b.vx * 0.35, b.vy * 0.35);
-        for (let k = 0; k < 3 && parts.length < PCAP; k++) { const a = Math.atan2(-b.vy, -b.vx) + rnd(-0.7, 0.7), s = rnd(2, 5); parts.push({ x: b.x, y: b.y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 12, max: 12, size: 2.5, color: '#bff9ff', drag: 0.85 }); }
+        for (let k = 0; k < 3 && parts.length < PCAP; k++) { const a = Math.atan2(-b.vy, -b.vx) + rnd(-0.7, 0.7), s = rnd(2, 5); parts.push({ x: b.x, y: b.y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 12, max: 12, size: 2.5, color: b.core || '#bff9ff', drag: 0.85 }); }
         if (onBulletHit(b, e) || b.pierce-- > 0) { (b.hitSet = b.hitSet || new Set()).add(e); } else { dead = true; return false; }
       }
     });
@@ -647,10 +651,10 @@ function draw() {
   // additive glows are the most expensive thing we draw on phones: keep them for things that matter
   if (gems.length < 40) for (const g of gems) if (vis(g.x, g.y, 20)) glow(g.x, g.y, 14, g.v >= 5 ? '#5cffb0' : '#3c9bff', 0.5);
   for (const e of enemies) if ((e.type === 'boss' || e.elite) && vis(e.x, e.y, 80)) glow(e.x, e.y, e.r * 2.4, e.color, 0.55 * (e.spawnT > 0 ? 1 - e.spawnT / e.spawnMax : 1));
-  { const step = bullets.length > 60 ? 3 : bullets.length > 30 ? 2 : 1; for (let i = 0; i < bullets.length; i += step) { const b = bullets[i]; glow(b.x, b.y, 14 + b.lv * 2, b.lv >= 4 ? '#ffe14d' : '#3cf0ff', 0.6); } }
+  { const step = bullets.length > 60 ? 3 : bullets.length > 30 ? 2 : 1; for (let i = 0; i < bullets.length; i += step) { const b = bullets[i]; glow(b.x, b.y, 14 + b.lv * 2, b.col || (b.lv >= 4 ? '#ffe14d' : '#3cf0ff'), 0.6); } }
   for (const b of ebullets) glow(b.x, b.y, 18, '#ff2e63', 0.8);
   if (G.state !== 'over' || G.deathT < 2) glow(P.x, P.y, 46 + P.stretch * 10, '#3cf0ff', 0.55);
-  if (P.muzzle > 0) glow(P.x + Math.cos(P.muzzleAng) * 20, P.y + Math.sin(P.muzzleAng) * 20, 22, '#bff9ff', P.muzzle / 4);
+  if (P.muzzle > 0) { const mx = P.x + Math.cos(P.muzzleAng) * 22, my = P.y + Math.sin(P.muzzleAng) * 22; glow(mx, my, 30, P.muzzleCol || '#bff9ff', P.muzzle / 4); glow(mx, my, 12, '#ffffff', P.muzzle / 4); }
   X.globalAlpha = 1; X.globalCompositeOperation = 'source-over';
 
   // rings
@@ -749,7 +753,7 @@ function draw() {
 
   // player bullets
   X.lineCap = 'round';
-  for (const b of bullets) blit(SPR.bolt(), b.x, b.y, 0.9 + b.lv * 0.12, Math.atan2(b.vy, b.vx));
+  drawPlayerBullets();
 
   // orbit blades with motion trails
   if (LV.orbit) {
