@@ -130,7 +130,7 @@ function featureUpdate() {
     if (c.vx || c.vy) { c.x += c.vx; c.y += c.vy; c.vx *= 0.88; c.vy *= 0.88; if (Math.abs(c.vx) + Math.abs(c.vy) < 0.05) c.vx = c.vy = 0; }
     const dx = P.x - c.x, dy = P.y - c.y, d = Math.hypot(dx, dy) || 1;
     if (c.age > 18 && (c.pull || d < P.magnet * 1.25)) { c.pull = true; c.ps = (c.ps || 0) + 0.8; const sp = Math.min(16, 3 + c.ps); c.x += dx / d * sp; c.y += dy / d * sp; }
-    if (d < P.r + 8 && c.age > 10) { coinDrops.splice(i, 1); G.coins += c.v; if (AU.ok('coin', 35)) AU.tone(1650, 0.05, 'square', 0.022, 300); }
+    if (d < P.r + 8 && c.age > 10) { coinDrops.splice(i, 1); G.coins += c.v; if (AU.ok('coin', 70)) AU.tone(1650, 0.05, 'square', 0.022, 300); }
   }
   trail.unshift({ x: P.x - Math.cos(P.ang) * 13, y: P.y - Math.sin(P.ang) * 13 }); if (trail.length > 18) trail.pop();
   if (G.frame % 20 === 0) checkMissionsLive();
@@ -278,7 +278,8 @@ function openChest(auto) {
     }, 60);
   });
   function finish() {
-    document.getElementById('chc').style.opacity = 1;
+    const chc = document.getElementById('chc'); if (!chc) return; // the chest screen was closed early
+    chc.style.opacity = 1;
     const b = document.getElementById('chok'); b.style.opacity = 1; b.style.pointerEvents = 'auto';
     b.onclick = () => {
       b.onclick = null;

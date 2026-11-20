@@ -59,6 +59,37 @@ const CARDS = [
   { id: 'shieldup', icon: '⛨', col: '#7fd1ff', name: 'Level-up Shield', max: 1, desc: () => 'Every level-up grants a shield' },
 ];
 const isCard = id => CARDS.some(c => c.id === id);
+// exact "now → next" numbers and a group + tip on every card, so a pick is a decision, not a guess
+const sps = n => (60 / (30 / (1 + 0.18 * n))).toFixed(1);
+const CARD_INFO = {
+  front: { g: 'SHOT PATTERN', d: l => `Bullets straight ahead: <b>${l} → ${l + 1}</b>`, tip: 'More bullets = more chances to trigger every effect' },
+  diag: { g: 'SHOT PATTERN', d: l => `Angled bullets: <b>${(l - 1) * 2} → ${l * 2}</b>`, tip: 'Hits enemies coming from the sides' },
+  side: { g: 'SHOT PATTERN', d: () => 'Adds <b>1 bullet left + 1 right</b>', tip: 'Covers you when surrounded' },
+  rear: { g: 'SHOT PATTERN', d: () => 'Adds <b>1 bullet behind you</b> (75% damage)', tip: 'Protects your back while you run' },
+  ricochet: { g: 'BULLET BEHAVIOUR', d: l => `Each bullet bounces to <b>${l - 1} → ${l}</b> more enemies`, tip: 'Best with Fire, Frost or Toxic rounds' },
+  split: { g: 'BULLET BEHAVIOUR', d: () => 'On hit, a bullet <b>splits into 2</b> (50% damage each)', tip: 'Great against dense swarms' },
+  pierce: { g: 'BULLET BEHAVIOUR', d: l => `Bullets pass through <b>${l - 1} → ${l}</b> enemies`, tip: 'Strong when enemies line up' },
+  homing: { g: 'BULLET BEHAVIOUR', d: () => 'Bullets <b>curve toward</b> the nearest enemy', tip: 'Fewer misses with angled and rear shots' },
+  explosive: { g: 'BULLET BEHAVIOUR', d: l => `Every hit explodes · blast <b>${l === 1 ? 0 : 46} → ${30 + 16 * l} px</b>`, tip: 'Pairs with Split and Ricochet' },
+  big: { g: 'POWER', d: l => `Bullet damage <b>${Math.round(14 * (1 + 0.25 * (l - 1)))} → ${Math.round(14 * (1 + 0.25 * l))}</b>`, tip: 'Simple and always useful' },
+  burn: { g: 'ELEMENT', d: l => `Burn <b>${(3 + 2 * l) * 4} dmg/s</b> for <b>${((90 + 30 * l) / 60).toFixed(1)} s</b>`, tip: 'Burn keeps working after the bullet is gone' },
+  freeze: { g: 'ELEMENT', d: l => `Slows enemies <b>55%</b> for <b>${((45 + 30 * l) / 60).toFixed(1)} s</b>`, tip: 'Slow enemies can\'t reach you' },
+  poison: { g: 'ELEMENT', d: l => `+${l} poison stack per hit · <b>8 dmg/s per stack</b>`, tip: 'Stacks up fast with many bullets' },
+  crit: { g: 'POWER', d: () => `Critical chance <b>${Math.round(P.crit * 100)}% → ${Math.round(P.crit * 100) + 8}%</b> (crits deal 2×)`, tip: 'Better the more bullets you fire' },
+  headshot: { g: 'POWER', d: () => '<b>2%</b> chance to destroy a normal enemy instantly', tip: 'Elites and bosses are immune' },
+  rapid: { g: 'POWER', d: l => `Volleys per second <b>${sps(l - 1)} → ${sps(l)}</b>`, tip: 'Multiplies every other card' },
+  leech: { g: 'SURVIVAL', d: l => `Heal <b>1 HP every ${l === 1 ? 120 : 80} kills</b>`, tip: 'Keeps long stages alive' },
+  shieldup: { g: 'SURVIVAL', d: () => 'Each level-up gives a <b>shield</b> that blocks 1 hit', tip: 'Safety for risky builds' },
+};
+for (const c of CARDS) { const i = CARD_INFO[c.id]; if (i) { c.desc = i.d; c.group = i.g; c.tip = i.tip; } }
+// Eagle Eye used to do nothing: wire its crit bonus
+const _applyUpgradeH = applyUpgrade;
+applyUpgrade = function (u) { _applyUpgradeH(u); if (u.id === 'crit') P.crit += 0.08; };
+function buildHtml() {
+  const own = UPGRADES.filter(u => LV[u.id] > 0);
+  if (!own.length) return '';
+  return `<div class="build in">${own.map(u => `<div><span style="color:${u.col}">${u.icon}</span><b>${u.name}</b><em>Lv ${LV[u.id]}/${u.max}</em><p>${u.skill ? u.desc(LV[u.id]) : (u.group || '') }</p></div>`).join('')}</div>`;
+}
 
 // ---------- fragments → items (Dota-style recipes) ----------
 const FRAG = {
@@ -323,7 +354,7 @@ levelUpScreen = function () {
     pick.map((u, i) => {
       const lv = u.ult ? G.ult + 1 : (LV[u.id] || 0) + 1, cls = u.ult ? 'r-legend' : u.skill ? 'r-epic' : 'r-rare';
       const kind = u.ult ? 'ULTIMATE' : u.skill ? H.name.toUpperCase() + ' SKILL' : 'CARD';
-      return `<button class="card in ${cls}" data-i="${i}"><div class="ic" style="color:${u.col};box-shadow:inset 0 0 0 1.5px ${u.col}66">${u.icon}</div><div><small class="kind" style="color:${u.col}">${kind}</small><b>${u.name}</b>${u.max < 99 ? `<span class="lvl">${lv === 1 ? 'NEW' : 'Lv ' + (lv - 1) + ' → ' + lv}</span>` : ''}<p>${u.desc(lv)}</p>${u.max < 99 && u.max > 1 ? `<div class="pips">${Array.from({ length: u.max }, (_, k) => `<i class="${k < lv - 1 ? 'on' : k === lv - 1 ? 'next' : ''}"></i>`).join('')}</div>` : ''}</div></button>`;
+      return `<button class="card in ${cls}" data-i="${i}"><div class="ic" style="color:${u.col};box-shadow:inset 0 0 0 1.5px ${u.col}66">${u.icon}</div><div><small class="kind" style="color:${u.col}">${kind}</small><b>${u.name}</b>${u.max < 99 ? `<span class="lvl">${lv === 1 ? 'NEW' : 'Lv ' + (lv - 1) + ' → ' + lv}</span>` : ''}<p>${u.desc(lv)}</p>${u.tip ? `<p class="tip">${u.group ? u.group + ' · ' : ''}${u.tip}</p>` : ''}${u.max < 99 && u.max > 1 ? `<div class="pips">${Array.from({ length: u.max }, (_, k) => `<i class="${k < lv - 1 ? 'on' : k === lv - 1 ? 'next' : ''}"></i>`).join('')}</div>` : ''}</div></button>`;
     }).join('') + `<button class="btn ghost in" id="rr" style="font-size:14px;padding:10px">↻ Reroll ${G.rerolls > 0 ? '· ' + G.rerolls + ' left' : '· watch ad'}</button>`);
   document.getElementById('rr').onclick = () => { AU.sfx('ui'); if (G.rerolls > 0) { G.rerolls--; levelUpScreen(); } else rewardedAd(levelUpScreen, levelUpScreen); };
   let chosen = false;

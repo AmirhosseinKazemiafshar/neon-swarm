@@ -27,7 +27,7 @@ function resize() {
 addEventListener('resize', resize); resize();
 
 const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
-const WORLD = 9000;
+const WORLD = 60000; // effectively endless: the edge is never reached
 const rnd = (a, b) => a + Math.random() * (b - a);
 const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -71,11 +71,11 @@ const AU = {
   },
   sfx(name) {
     switch (name) {
-      case 'shoot': if (this.ok('shoot', 70)) this.tone(880, 0.04, 'square', 0.018, -300); break;
-      case 'hit': if (this.ok('hit', 45)) this.tone(rnd(300, 380), 0.03, 'square', 0.02); break;
-      case 'kill': if (this.ok('kill', 40)) { this.noise(0.12, 0.06, 1800); this.tone(rnd(160, 220), 0.1, 'triangle', 0.05, -90); } break;
+      case 'shoot': if (this.ok('shoot', 120)) this.tone(880, 0.04, 'square', 0.018, -300); break;
+      case 'hit': if (this.ok('hit', 90)) this.tone(rnd(300, 380), 0.03, 'square', 0.02); break;
+      case 'kill': if (this.ok('kill', 75)) { this.noise(0.12, 0.06, 1800); this.tone(rnd(160, 220), 0.1, 'triangle', 0.05, -90); } break;
       case 'big': this.noise(0.6, 0.18, 700); this.tone(90, 0.6, 'sawtooth', 0.09, -50); break;
-      case 'gem': if (this.ok('gem', 28)) { this.gp = (this.gp || 0) + 1; this.tone(1100 + (this.gp % 8) * 60, 0.04, 'sine', 0.035); } break;
+      case 'gem': if (this.ok('gem', 60)) { this.gp = (this.gp || 0) + 1; this.tone(1100 + (this.gp % 8) * 60, 0.04, 'sine', 0.035); } break;
       case 'hurt': this.noise(0.22, 0.13, 500); this.tone(140, 0.22, 'sawtooth', 0.07, -60); break;
       case 'level': [523, 659, 784, 1047, 1319].forEach((f, i) => this.tone(f, 0.18, 'triangle', 0.07, 0, i * 0.06)); break;
       case 'pick': this.tone(660, 0.1, 'triangle', 0.07, 500); this.tone(990, 0.12, 'sine', 0.04, 0, 0.05); break;
@@ -550,7 +550,7 @@ function hurt(dmg, sx, sy) {
 function gainXp(v) {
   G.xp += v * P.xpMul; AU.sfx('gem');
   if (G.xp >= G.xpNeed) {
-    G.xp -= G.xpNeed; G.level++; G.xpNeed = Math.floor(G.xpNeed * 1.28 + 4); HUD.levelPop = 1;
+    G.xp -= G.xpNeed; G.level++; G.xpNeed = Math.floor(G.xpNeed * 1.33 + 6); // fewer, more meaningful level-ups HUD.levelPop = 1;
     AU.sfx('level'); buzz(50); ring(P.x, P.y, 10, 170, '#ffe14d', 30, 7); ring(P.x, P.y, 10, 120, '#ffffff', 20, 3); burst(P.x, P.y, '#ffe14d', 34, 6, 3);
     flash(0.3, '#ffe14d'); punch(0.08);
     G.slow = 26;
@@ -639,7 +639,7 @@ function draw() {
 
   drawFloor(hw, hh);
   drawWorldLayer(hw, hh, vis);
-  X.strokeStyle = `rgba(255,46,99,${0.35 + Math.sin(G.frame * 0.05) * 0.15})`; X.lineWidth = 4; X.strokeRect(0, 0, WORLD, WORLD);
+  X.strokeStyle = `rgba(255,46,99,${0.35 + Math.sin(G.frame * 0.05) * 0.15})`; X.lineWidth = 0;
 
   // glow layer
   X.globalCompositeOperation = 'lighter';
@@ -1212,7 +1212,7 @@ function rewardedAd(onReward, onSkip) {
 function togglePause() {
   if (G.state === 'play') {
     G.state = 'pause'; joy = null; setPlayUi(false);
-    show(`<div class="h2 in">Paused</div><button class="btn in" id="res">RESUME</button><button class="btn ghost in" id="snd">Sound: ${AU.on ? 'ON' : 'OFF'}</button><button class="btn ghost in" id="quit">Quit run</button>`);
+    show(`<div class="h2 in">Paused</div>${typeof buildHtml === 'function' ? buildHtml() : ''}<button class="btn in" id="res">RESUME</button><button class="btn ghost in" id="snd">Sound: ${AU.on ? 'ON' : 'OFF'}</button><button class="btn ghost in" id="quit">Quit run</button>`);
     document.getElementById('res').onclick = togglePause;
     document.getElementById('snd').onclick = e => { AU.on = !AU.on; Save.bump(s => s.sound = AU.on); e.target.textContent = 'Sound: ' + (AU.on ? 'ON' : 'OFF'); };
     document.getElementById('quit').onclick = () => { hide(); P.hp = 0; gameOver(); };
@@ -1225,18 +1225,26 @@ document.addEventListener('visibilitychange', () => { if (document.hidden && G.s
 let lastT = performance.now(), acc = 0;
 function loop(now) {
   const dt = Math.min(100, now - lastT); lastT = now;
+  let stepped = false;
   if (G.state === 'play') {
     if (G.hitStop > 0) G.hitStop--;
     else {
       acc += dt * (G.slow > 0 ? 0.25 : 1);
       let steps = 0; // never run more than 3 simulation steps per frame: a slow frame must not snowball
-      while (acc >= 1000 / 60 && steps++ < 3) { acc -= 1000 / 60; update(); if (G.state !== 'play') break; }
+      while (acc >= 1000 / 60 && steps++ < 3) { acc -= 1000 / 60; update(); updateCamera(); stepped = true; if (G.state !== 'play') break; }
       if (steps >= 3) acc = 0;
       if (G.state === 'play' && G.slow > 0 && --G.slow === 0) levelUpScreen();
     }
+    // 120 Hz screens: nothing moved this frame, so don't redraw a half-updated scene (that was the micro-stutter)
+    if (!stepped && G.state === 'play') { requestAnimationFrame(loop); return; }
   } else if (G.state === 'title') updateTitle();
-  else if (G.state === 'over') G.deathT++;
-
+  else { if (G.state === 'over') G.deathT++; updateCamera(); }
+  syncButtons();
+  draw();
+  requestAnimationFrame(loop);
+}
+// camera runs on the same 60 Hz clock as the game so the hero and the world never drift apart
+function updateCamera() {
   if (G.state !== 'title') {
     // camera: follow with look-ahead, zoom out as the screen fills up, punch-in on big moments
     const crowd = clamp(enemies.length / 260, 0, 1) * 0.06;
@@ -1247,12 +1255,12 @@ function loop(now) {
     const fx = boss ? lerp(P.x, boss.x, 0.45) : P.x + P.vx * 14, fy = boss ? lerp(P.y, boss.y, 0.45) : P.y + P.vy * 14;
     cam.x = lerp(cam.x, fx, 0.12); cam.y = lerp(cam.y, fy, 0.12);
   }
-  // dash button cooldown ring
-  if (G.state === 'play' && P) {
-    const p = P.dashCd > 0 ? 100 - P.dashCd / (P.dashMax * P.haste * P.dashMul) * 100 : 100;
-    dashBtn.style.setProperty('--p', p + '%'); dashBtn.classList.toggle('ready', P.dashCd <= 0);
-  }
-  draw();
-  requestAnimationFrame(loop);
+}
+// dash button cooldown ring — only touch the DOM when the value really changes (style writes are costly on phones)
+let dashShown = -1;
+function syncButtons() {
+  if (G.state !== 'play' || !P) return;
+  const p = P.dashCd > 0 ? Math.floor(100 - P.dashCd / (P.dashMax * P.haste * P.dashMul) * 100) : 100;
+  if (p !== dashShown) { dashShown = p; dashBtn.style.setProperty('--p', p + '%'); dashBtn.classList.toggle('ready', p >= 100); }
 }
 // boot happens at the end of features.js (it adds hooks used above)

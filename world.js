@@ -73,10 +73,11 @@ const DIR = {
   wave: 1, phase: 'build', phaseK: 0, lastPhase: '',
   power() {
     if (!P || !LV) return 1;
-    const w = (LV.orbit || 0) + (LV.chain || 0) + (LV.nova || 0) + (LV.missile || 0) + (LV.drone || 0);
-    return 1 + G.tier * 0.45 + w * 0.22 + Object.keys(EVO).length * 2.5 + (P.might - 1) * 1.6 + (1 / P.haste - 1) * 1.6;
+    // every card / skill level, Ultimate rank and crafted item counts as power (the old formula only saw retired weapons)
+    let picks = 0; for (const u of UPGRADES) picks += LV[u.id] || 0;
+    return 1 + picks * 0.32 + (G.ult || 0) * 1.0 + (G.items ? G.items.length : 0) * 0.7 + (P.might - 1) * 1.6 + (1 / P.haste - 1) * 1.6;
   },
-  adapt() { const expected = 1 + D() / 55; return Math.pow(clamp(this.power() / expected, 0.75, 2.6), 0.85); },
+  adapt() { const expected = 1.6 + D() / 70; return clamp(this.power() / expected, 0.85, 3.2); }, // strong builds face tougher enemies
   hpMul() { if (!G.mode || G.state === 'title') return 1; return (G.mode === 'endless' ? Math.pow(1.13, this.wave - 1) : 1) * this.adapt() * (G.hpBonus || 1); },
   rateMul() {
     let m = 1;
@@ -122,7 +123,8 @@ const REGIONS = [
   { name: 'Scrap Yards', col: '#ffc94d' }, { name: 'Core Plaza', col: '#3c9bff' }, { name: 'Bio Gardens', col: '#5cffb0' },
   { name: 'Frost Array', col: '#bff9ff' }, { name: 'Neon Docks', col: '#3cf0ff' }, { name: 'Hive Outskirts', col: '#ff2e63' },
 ];
-const regionAt = (x, y) => REGIONS[clamp(Math.floor(y / REG), 0, 2) * 3 + clamp(Math.floor(x / REG), 0, 2)];
+const WO = WORLD / 2 - REG * 1.5; // the 3×3 region map sits in the middle of the (huge) world
+const regionAt = (x, y) => REGIONS[clamp(Math.floor((y - WO) / REG), 0, 2) * 3 + clamp(Math.floor((x - WO) / REG), 0, 2)];
 let landmarks = [], BEACONS = [], dust = [], lastRegion = null;
 const BEACON = { active: null };
 
@@ -159,7 +161,7 @@ function lmArt(kind, col) {
 function buildWorld() {
   landmarks = []; BEACONS = [];
   for (let r = 0; r < 9; r++) {
-    const rx = (r % 3) * REG, ry = Math.floor(r / 3) * REG, col = REGIONS[r].col;
+    const rx = WO + (r % 3) * REG, ry = WO + Math.floor(r / 3) * REG, col = REGIONS[r].col;
     for (let i = 0; i < 4; i++) {
       const x = rx + 300 + hash(r * 7 + i, 11) * (REG - 600), y = ry + 300 + hash(r * 5 + i, 23) * (REG - 600);
       if (Math.hypot(x - WORLD / 2, y - WORLD / 2) < 450) continue; // keep the spawn point clear
@@ -232,7 +234,7 @@ function beaconReward(b) {
 
 // floor layer: region tint, landmarks, beacons, drifting dust (world space, under the action)
 function drawWorldLayer(hw, hh, vis) {
-  if (G.mode !== 'campaign') {
+  if (false) { // region tints removed: their straight edges read as walls
     for (let ry = 0; ry < 3; ry++) for (let rx = 0; rx < 3; rx++) {
       const x0 = Math.max(rx * REG, cam.x - hw), x1 = Math.min((rx + 1) * REG, cam.x + hw), y0 = Math.max(ry * REG, cam.y - hh), y1 = Math.min((ry + 1) * REG, cam.y + hh);
       if (x1 <= x0 || y1 <= y0) continue;
