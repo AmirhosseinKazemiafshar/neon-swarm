@@ -129,6 +129,7 @@ function featureUpdate() {
     const c = coinDrops[i]; c.age++; c.t += 0.15;
     if (c.vx || c.vy) { c.x += c.vx; c.y += c.vy; c.vx *= 0.88; c.vy *= 0.88; if (Math.abs(c.vx) + Math.abs(c.vy) < 0.05) c.vx = c.vy = 0; }
     const dx = P.x - c.x, dy = P.y - c.y, d = Math.hypot(dx, dy) || 1;
+    if (c.age > 420 || coinDrops.length > 60 && c.age > 90) c.pull = true; // coins never pile up on screen
     if (c.age > 18 && (c.pull || d < P.magnet * 1.25)) { c.pull = true; c.ps = (c.ps || 0) + 0.8; const sp = Math.min(16, 3 + c.ps); c.x += dx / d * sp; c.y += dy / d * sp; }
     if (d < P.r + 8 && c.age > 10) { coinDrops.splice(i, 1); G.coins += c.v; if (AU.ok('coin', 70)) AU.tone(1650, 0.05, 'square', 0.022, 300); }
   }
@@ -221,16 +222,20 @@ function toast(s, color = '#fff') { toasts.push({ s, color, life: 170, max: 170 
 function drawFeatureHud() {
   drawWorldHud();
   X.textAlign = 'center'; X.textBaseline = 'middle';
-  toasts.forEach((t, i) => {
-    const k = t.life / t.max, inK = Math.min(1, (t.max - t.life) / 12), y = H - 150 - i * 30 - G.cineH;
-    X.globalAlpha = Math.min(1, k * 3) * inK; X.font = '800 13px system-ui';
-    const w = X.measureText(t.s).width + 24; X.fillStyle = 'rgba(12,14,30,.82)'; X.beginPath(); X.roundRect(W / 2 - w / 2, y - 12, w, 24, 12); X.fill();
-    X.fillStyle = t.color; X.fillText(t.s, W / 2, y + (1 - inK) * 8);
+  // messages live in one clear lane under the top HUD: never behind buttons, never over the action at the bottom
+  const lane = 10 + G.cineH * 0.9 + 198; // below the radar and the boss timer
+  toasts.slice(-2).forEach((t, i) => {
+    const k = t.life / t.max, inK = Math.min(1, (t.max - t.life) / 12), y = lane + i * 30;
+    X.globalAlpha = Math.min(1, k * 3) * inK; X.font = '800 12px system-ui';
+    const maxW = W - 40, tw = X.measureText(t.s).width, sc = Math.min(1, (maxW - 24) / tw), w = tw * sc + 24;
+    X.fillStyle = 'rgba(10,12,28,.9)'; X.beginPath(); X.roundRect(W / 2 - w / 2, y - 12, w, 24, 12); X.fill();
+    X.strokeStyle = t.color + '55'; X.lineWidth = 1; X.stroke();
+    X.save(); X.translate(W / 2, y + (1 - inK) * 6); X.scale(sc, sc); X.fillStyle = t.color; X.fillText(t.s, 0, 0); X.restore();
   });
   X.globalAlpha = 1; toasts = toasts.filter(t => --t.life > 0);
   // evolved weapons get a gold star in the corner of the screen
   const ev = EVOLUTIONS.filter(v => EVO[v.w]);
-  if (ev.length) { X.font = '800 11px system-ui'; X.textAlign = 'left'; X.fillStyle = '#ffc94d'; X.fillText('★ ' + ev.map(v => v.name).join(' · '), 12, H - 18 - G.cineH); }
+  // (evolution footer removed: it overlapped the item slots)
 }
 function rarity(u, lv) { return WEAPON_IDS.includes(u.id) ? (lv === 1 ? 'r-epic' : 'r-rare') : 'r-common'; }
 

@@ -512,6 +512,7 @@ function update() {
     const g = gems[i]; g.t += 0.1; g.age++;
     if (g.vx) { g.x += g.vx; g.y += g.vy; g.vx *= 0.88; g.vy *= 0.88; if (Math.abs(g.vx) + Math.abs(g.vy) < 0.05) g.vx = g.vy = 0; }
     const dx = P.x - g.x, dy = P.y - g.y, d = Math.hypot(dx, dy) || 1;
+    if (g.age > 600 || gems.length > 70 && g.age > 120) g.pull = true; // old gems fly to you on their own: no carpet of crystals
     if (g.age > 14 && (g.pull || d < P.magnet)) { g.pull = true; g.ps = (g.ps || 0) + 0.7; const s = Math.min(18, 3 + g.ps); g.x += dx / d * s; g.y += dy / d * s; }
     if (d < P.r + 8 && g.age > 8) { gems.splice(i, 1); gainXp(g.v); if (parts.length < PCAP) parts.push({ x: P.x, y: P.y, vx: 0, vy: 0, life: 10, max: 10, size: 10, color: g.v >= 5 ? '#5cffb0' : '#6fc3ff', drag: 1 }); }
   }
