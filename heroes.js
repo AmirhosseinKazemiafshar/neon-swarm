@@ -184,7 +184,7 @@ updateWeapons = function () {
   } else if (H === 'pyro') {
     if (q && --WP.qCd <= 0) {
       WP.qCd = (360 - q * 42) * P.haste; const t = nearest(P.x, P.y, 400); const a = t ? Math.atan2(t.y - P.y, t.x - P.x) : P.ang, L = 190 + q * 30;
-      for (let i = 0; i < 26 && parts.length < 900; i++) { const aa = a + rnd(-0.5, 0.5), s = rnd(5, 11); parts.push({ x: P.x, y: P.y, vx: Math.cos(aa) * s, vy: Math.sin(aa) * s, life: 26, max: 26, size: rnd(5, 10), color: Math.random() < 0.5 ? '#ff8a3c' : '#ffe14d', drag: 0.93 }); }
+      for (let i = 0; i < 26 && parts.length < PCAP; i++) { const aa = a + rnd(-0.5, 0.5), s = rnd(5, 11); parts.push({ x: P.x, y: P.y, vx: Math.cos(aa) * s, vy: Math.sin(aa) * s, life: 26, max: 26, size: rnd(5, 10), color: Math.random() < 0.5 ? '#ff8a3c' : '#ffe14d', drag: 0.93 }); }
       near(P.x, P.y, L, e => { const dx = e.x - P.x, dy = e.y - P.y, d = Math.hypot(dx, dy); let da = Math.atan2(dy, dx) - a; da = Math.atan2(Math.sin(da), Math.cos(da)); if (d < L && Math.abs(da) < 0.55) { damage(e, 22 + q * 10, dx / d * 6, dy / d * 6); e.burnT = 150; e.burnD = 4 + q; if (cryo) e.slowT = 90; } });
       AU.noise(0.3, 0.1, 1200); shake(3);
     }
@@ -386,9 +386,9 @@ drawExtrasWorld = function () {
   // status markers on enemies
   for (const e of enemies) {
     if (e.dead || e.spawnT > 0) continue;
-    if (e.burnT > 0 && G.frame % 4 === 0 && parts.length < 850) parts.push({ x: e.x + rnd(-e.r, e.r) * 0.6, y: e.y - e.r * 0.3, vx: rnd(-0.3, 0.3), vy: -rnd(0.8, 1.8), life: 18, max: 18, size: rnd(3, 5), color: Math.random() < 0.5 ? '#ff8a3c' : '#ffe14d', drag: 0.96 });
+    if (e.burnT > 0 && G.frame % 4 === 0 && parts.length < PCAP - 40) parts.push({ x: e.x + rnd(-e.r, e.r) * 0.6, y: e.y - e.r * 0.3, vx: rnd(-0.3, 0.3), vy: -rnd(0.8, 1.8), life: 18, max: 18, size: rnd(3, 5), color: Math.random() < 0.5 ? '#ff8a3c' : '#ffe14d', drag: 0.96 });
     if (e.slowT > 0) { X.strokeStyle = 'rgba(111,195,255,.75)'; X.lineWidth = 2.5; X.beginPath(); X.arc(e.x, e.y, e.r + 4, 0, TAU); X.stroke(); }
-    if (e.poisonT > 0 && G.frame % 10 === 0 && parts.length < 850) parts.push({ x: e.x + rnd(-e.r, e.r) * 0.5, y: e.y, vx: 0, vy: -0.6, life: 26, max: 26, size: 4, color: '#5cffb0', drag: 1 });
+    if (e.poisonT > 0 && G.frame % 10 === 0 && parts.length < PCAP - 40) parts.push({ x: e.x + rnd(-e.r, e.r) * 0.5, y: e.y, vx: 0, vy: -0.6, life: 26, max: 26, size: 4, color: '#5cffb0', drag: 1 });
   }
   X.globalCompositeOperation = 'lighter';
   for (const o of orbs) { glow(o.x, o.y, 46 + Math.sin(G.frame * 0.3) * 6, '#4fd8f0', 0.9); glow(o.x, o.y, 16, '#ffffff', 1); }

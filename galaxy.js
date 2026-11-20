@@ -51,6 +51,10 @@ function skillCap() { return 2 + Math.min(2, masteryLv(G.ship)); }
 function ultCap() { return 1 + Math.min(2, masteryLv(G.ship)); }
 const fmtC = n => '💠 ' + n;
 
+// missions that belonged to the old route Campaign are swapped for stage goals
+for (let i = MISSION_POOL.length - 1; i >= 0; i--) if (MISSION_POOL[i].k === 'system') MISSION_POOL.splice(i, 1);
+MISSION_POOL.push({ k: 'perfect', label: () => 'Clear a stage with all 3 stars', tiers: [1, 1, 1] }, { k: 'clear', label: n => `Clear ${n} stage${n > 1 ? 's' : ''}`, tiers: [1, 1, 1, 1] });
+{ const _rv2 = runValue; runValue = k => k === 'perfect' ? (G.perfect ? 1 : 0) : k === 'clear' ? (G.cleared ? 1 : 0) : _rv2(k); }
 // card pool = base cards + researched ones; blueprints gate item recipes
 const _onNewRunG = onNewRun;
 onNewRun = function () {
@@ -58,7 +62,7 @@ onNewRun = function () {
   _onNewRunG();
   const known = new Set([...BASE_CARDS, ...prog().research]);
   for (let i = UPGRADES.length - 1; i >= 0; i--) { const u = UPGRADES[i]; if (!u.skill && !known.has(u.id)) UPGRADES.splice(i, 1); }
-  Object.assign(G, { stage: -1, nightmare: false, daily: false, bossOut: false, stageDone: false, hpLost: 0, hpBonus: 1, rateBonus: 1, crystalBonus: 1, eliteGap: 0, bounty: false, paid: false });
+  Object.assign(G, { stage: -1, nightmare: false, daily: false, bossOut: false, stageDone: false, hpLost: 0, hpBonus: 1, rateBonus: 1, crystalBonus: 1, eliteGap: 0, bounty: false, paid: false, perfect: false, cleared: false });
 };
 onFrag = (function (orig) {
   return function (ft) {
@@ -131,9 +135,12 @@ function rewardCrystals(win) {
 }
 function addMastery(win) { const xp = Math.round(G.kills / 8 + (win ? 40 : 10)); Save.bump(s => { s.mastery = s.mastery || {}; s.mastery[G.ship] = (s.mastery[G.ship] || 0) + xp; }); return xp; }
 function stageWin() {
-  if (G.state !== 'play' && G.state !== 'over') return;
+  // a level-up or chest can be open when the boss dies: wait until it closes, then show the win
+  if (G.state === 'levelup' || G.state === 'chest' || G.state === 'beacon' || G.state === 'pause') { setTimeout(stageWin, 400); return; }
+  if (G.state !== 'play') return;
   G.state = 'over'; setPlayUi(false); joy = null;
   const k = G.stage, starsNow = 1 + (G.hpLost <= 2 ? 1 : 0) + (G.t <= STAGE_LEN + 90 ? 1 : 0);
+  G.perfect = starsNow === 3; G.cleared = true;
   const p = prog(), key = G.nightmare ? 'nstars' : 'gstars', prev = (G.nightmare ? p.nstars : p.stars)[k] || 0;
   const newStars = Math.max(0, starsNow - prev), mlBefore = masteryLv(G.ship);
   let cr = rewardCrystals(true) + newStars * 10;
@@ -319,7 +326,7 @@ titleScreen = function () {
   // settings row (sound, graphics, shake, controls)
   const sets = document.getElementById('sets'), mk = (label, fn) => { const b = document.createElement('button'); b.className = 'mini'; b.textContent = label(); b.onclick = () => { fn(); b.textContent = label(); AU.sfx('ui'); }; sets.appendChild(b); };
   mk(() => 'Sound ' + (AU.on ? 'on' : 'off'), () => { AU.on = !AU.on; Save.bump(x => x.sound = AU.on); });
-  mk(() => 'Graphics ' + ({ auto: 'auto', high: 'high', low: 'low' }[Save.get().gfx || 'auto']), () => { const o = ['auto', 'high', 'low'], c = Save.get().gfx || 'auto', n = o[(o.indexOf(c) + 1) % 3]; Save.bump(x => x.gfx = n); Q.light = Q.bloom = n !== 'low'; });
+  mk(() => 'Graphics ' + ({ auto: 'auto', high: 'high', low: 'low' }[Save.get().gfx || 'auto']), () => { const o = ['auto', 'high', 'low'], c = Save.get().gfx || 'auto', n = o[(o.indexOf(c) + 1) % 3]; Save.bump(x => x.gfx = n); Q.light = n !== 'low'; Q.bloom = n === 'high'; LOWRES = n === 'low'; resize(); });
   mk(() => 'Shake ' + (SETTINGS.shake === 1 ? 'full' : SETTINGS.shake ? 'low' : 'off'), () => { SETTINGS.shake = SETTINGS.shake === 1 ? 0.5 : SETTINGS.shake ? 0 : 1; Save.bump(x => x.shake = SETTINGS.shake); });
   mk(() => SETTINGS.control === 'stop' ? 'Stop to shoot' : 'Auto-fire', () => { SETTINGS.control = SETTINGS.control === 'stop' ? 'auto' : 'stop'; Save.bump(x => x.control = SETTINGS.control); });
 };

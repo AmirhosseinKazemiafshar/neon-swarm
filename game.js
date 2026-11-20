@@ -6,10 +6,21 @@
 //     gem spew, cinematic boss intro, HUD juice, nebula, streaks.
 // =====================================================================
 
-const C = document.getElementById('c'), X = C.getContext('2d');
+const C = document.getElementById('c'), X = C.getContext('2d', { alpha: false });
+const TOUCH = matchMedia('(pointer: coarse)').matches;
+let LOWRES = false;
+const PCAP = TOUCH ? 420 : 700; // particle budget
 let W = 0, H = 0, DPR = 1;
+let vigC = null;
+function vignette() {
+  if (vigC && vigC.width === Math.ceil(W / 2) && vigC.height === Math.ceil(H / 2)) return vigC;
+  vigC = document.createElement('canvas'); vigC.width = Math.ceil(W / 2); vigC.height = Math.ceil(H / 2);
+  const g = vigC.getContext('2d'), w = vigC.width, h = vigC.height, vg = g.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.35, w / 2, h / 2, Math.max(w, h) * 0.75);
+  vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.55)'); g.fillStyle = vg; g.fillRect(0, 0, w, h); return vigC;
+}
 function resize() {
-  DPR = Math.min(2, window.devicePixelRatio || 1);
+  // phones: cap the pixel ratio — fill-rate is the real limit on mobile GPUs
+  DPR = Math.min(TOUCH ? 1.6 : 2, window.devicePixelRatio || 1) * (LOWRES ? 0.72 : 1);
   W = window.innerWidth; H = window.innerHeight;
   C.width = W * DPR; C.height = H * DPR; C.style.width = W + 'px'; C.style.height = H + 'px';
 }
@@ -223,7 +234,7 @@ function nearest(x, y, maxR, skip) {
 
 // ---------- fx ----------
 function burst(x, y, color, n, spd, size = 3, life = 40) {
-  for (let i = 0; i < n && parts.length < 900; i++) {
+  for (let i = 0; i < n && parts.length < PCAP; i++) {
     const a = Math.random() * TAU, s = spd * (0.3 + Math.random());
     parts.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life, max: life, size: size * rnd(0.6, 1.4), color, drag: 0.92 });
   }
@@ -411,7 +422,7 @@ function update() {
   const sp = Math.hypot(P.vx, P.vy); P.stretch = lerp(P.stretch, Math.min(1, sp / 12), 0.3);
   if (sp > 0.4) {
     const ta = Math.atan2(P.vy, P.vx); let d = ta - P.ang; d = Math.atan2(Math.sin(d), Math.cos(d)); P.ang += d * 0.25;
-    if (G.frame % 2 === 0 && parts.length < 900) parts.push({ x: P.x - Math.cos(P.ang) * 14, y: P.y - Math.sin(P.ang) * 14, vx: -Math.cos(P.ang) * 1.5 + rnd(-.4, .4), vy: -Math.sin(P.ang) * 1.5 + rnd(-.4, .4), life: 22, max: 22, size: 3.5, color: '#3cf0ff', drag: 0.9 });
+    if (G.frame % 2 === 0 && parts.length < PCAP) parts.push({ x: P.x - Math.cos(P.ang) * 14, y: P.y - Math.sin(P.ang) * 14, vx: -Math.cos(P.ang) * 1.5 + rnd(-.4, .4), vy: -Math.sin(P.ang) * 1.5 + rnd(-.4, .4), life: 22, max: 22, size: 3.5, color: '#3cf0ff', drag: 0.9 });
   }
   if (P.inv > 0) P.inv--; if (P.recoil > 0) P.recoil *= 0.7; if (P.muzzle > 0) P.muzzle--;
   if (P.hp === 1 && G.frame % 55 === 0) AU.sfx('beat');
@@ -456,7 +467,7 @@ function update() {
       if (e.dead || e.spawnT > 0 || (b.hitSet && b.hitSet.has(e))) return;
       if ((e.x - b.x) ** 2 + (e.y - b.y) ** 2 < (e.r + 5) ** 2) {
         damage(e, b.dmg, b.vx * 0.35, b.vy * 0.35);
-        for (let k = 0; k < 3 && parts.length < 900; k++) { const a = Math.atan2(-b.vy, -b.vx) + rnd(-0.7, 0.7), s = rnd(2, 5); parts.push({ x: b.x, y: b.y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 12, max: 12, size: 2.5, color: '#bff9ff', drag: 0.85 }); }
+        for (let k = 0; k < 3 && parts.length < PCAP; k++) { const a = Math.atan2(-b.vy, -b.vx) + rnd(-0.7, 0.7), s = rnd(2, 5); parts.push({ x: b.x, y: b.y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 12, max: 12, size: 2.5, color: '#bff9ff', drag: 0.85 }); }
         if (onBulletHit(b, e) || b.pierce-- > 0) { (b.hitSet = b.hitSet || new Set()).add(e); } else { dead = true; return false; }
       }
     });
@@ -502,7 +513,7 @@ function update() {
     if (g.vx) { g.x += g.vx; g.y += g.vy; g.vx *= 0.88; g.vy *= 0.88; if (Math.abs(g.vx) + Math.abs(g.vy) < 0.05) g.vx = g.vy = 0; }
     const dx = P.x - g.x, dy = P.y - g.y, d = Math.hypot(dx, dy) || 1;
     if (g.age > 14 && (g.pull || d < P.magnet)) { g.pull = true; g.ps = (g.ps || 0) + 0.7; const s = Math.min(18, 3 + g.ps); g.x += dx / d * s; g.y += dy / d * s; }
-    if (d < P.r + 8 && g.age > 8) { gems.splice(i, 1); gainXp(g.v); if (parts.length < 900) parts.push({ x: P.x, y: P.y, vx: 0, vy: 0, life: 10, max: 10, size: 10, color: g.v >= 5 ? '#5cffb0' : '#6fc3ff', drag: 1 }); }
+    if (d < P.r + 8 && g.age > 8) { gems.splice(i, 1); gainXp(g.v); if (parts.length < PCAP) parts.push({ x: P.x, y: P.y, vx: 0, vy: 0, life: 10, max: 10, size: 10, color: g.v >= 5 ? '#5cffb0' : '#6fc3ff', drag: 1 }); }
   }
   for (let i = items.length - 1; i >= 0; i--) {
     const it = items[i]; it.t++;
@@ -603,7 +614,9 @@ function draw() {
   X.setTransform(DPR, 0, 0, DPR, 0, 0);
   X.fillStyle = '#070912'; X.fillRect(0, 0, W, H);
 
-  // nebula (far parallax)
+  // nebula + stars only matter near the edge of the world (the deck floor hides them otherwise)
+  const nearEdge = cam.x - W / (2 * cam.z) < 0 || cam.y - H / (2 * cam.z) < 0 || cam.x + W / (2 * cam.z) > WORLD || cam.y + H / (2 * cam.z) > WORLD;
+  if (nearEdge) {
   X.globalCompositeOperation = 'lighter';
   for (const n of nebula) {
     const sx = W / 2 + (n.x - cam.x) * 0.3 * cam.z, sy = H / 2 + (n.y - cam.y) * 0.3 * cam.z, r = n.r * (1 + Math.sin(G.frame * 0.004 + n.ph) * 0.08);
@@ -615,6 +628,7 @@ function draw() {
     X.globalAlpha = (0.25 + s.d) * (0.75 + Math.sin(G.frame * 0.05 + s.tw) * 0.25); X.fillStyle = s.d > 0.35 ? '#bff9ff' : '#6a70b0'; X.fillRect(sx, sy, s.s, s.s);
   }
   X.globalAlpha = 1;
+  }
 
   let shx = 0, shy = 0;
   if (G.shake > 0.01) { const tr = G.shake * G.shake, tt = performance.now() / 1000; shx = (Math.sin(tt * 37.1) + Math.sin(tt * 61.7) * 0.5) * 12 * tr; shy = (Math.sin(tt * 43.3 + 1) + Math.sin(tt * 57.9) * 0.5) * 12 * tr; G.shake = Math.max(0, G.shake - 0.03); } else G.shake = 0;
@@ -629,9 +643,10 @@ function draw() {
 
   // glow layer
   X.globalCompositeOperation = 'lighter';
-  for (const g of gems) if (vis(g.x, g.y, 20)) glow(g.x, g.y, 16, g.v >= 5 ? '#5cffb0' : '#3c9bff', 0.6);
-  for (const e of enemies) if (vis(e.x, e.y, 80)) glow(e.x, e.y, e.r * 2.4, e.color, (e.type === 'boss' ? 0.55 : 0.16) * (e.spawnT > 0 ? 1 - e.spawnT / e.spawnMax : 1));
-  for (const b of bullets) glow(b.x, b.y, 16 + b.lv * 3, b.lv >= 4 ? '#ffe14d' : '#3cf0ff', 0.7);
+  // additive glows are the most expensive thing we draw on phones: keep them for things that matter
+  if (gems.length < 40) for (const g of gems) if (vis(g.x, g.y, 20)) glow(g.x, g.y, 14, g.v >= 5 ? '#5cffb0' : '#3c9bff', 0.5);
+  for (const e of enemies) if ((e.type === 'boss' || e.elite) && vis(e.x, e.y, 80)) glow(e.x, e.y, e.r * 2.4, e.color, 0.55 * (e.spawnT > 0 ? 1 - e.spawnT / e.spawnMax : 1));
+  { const step = bullets.length > 60 ? 3 : bullets.length > 30 ? 2 : 1; for (let i = 0; i < bullets.length; i += step) { const b = bullets[i]; glow(b.x, b.y, 14 + b.lv * 2, b.lv >= 4 ? '#ffe14d' : '#3cf0ff', 0.6); } }
   for (const b of ebullets) glow(b.x, b.y, 18, '#ff2e63', 0.8);
   if (G.state !== 'over' || G.deathT < 2) glow(P.x, P.y, 46 + P.stretch * 10, '#3cf0ff', 0.55);
   if (P.muzzle > 0) glow(P.x + Math.cos(P.muzzleAng) * 20, P.y + Math.sin(P.muzzleAng) * 20, 22, '#bff9ff', P.muzzle / 4);
@@ -808,10 +823,11 @@ function draw() {
 
   postFX();
   // vignette / low hp
-  const vg = X.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.35, W / 2, H / 2, Math.max(W, H) * 0.75);
   const low = P.hp === 1 && G.state === 'play' ? 0.25 + Math.sin(G.frame * 0.12) * 0.12 : 0;
-  vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, low ? `rgba(120,0,30,${0.5 + low})` : 'rgba(0,0,0,.55)');
-  X.fillStyle = vg; X.fillRect(0, 0, W, H);
+  if (low) {
+    const vg = X.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.35, W / 2, H / 2, Math.max(W, H) * 0.75);
+    vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, `rgba(120,0,30,${0.5 + low})`); X.fillStyle = vg; X.fillRect(0, 0, W, H);
+  } else X.drawImage(vignette(), 0, 0, W, H); // cached: no gradient rebuilt every frame
 
   // cinematic letterbox for boss intro
   G.cineH = lerp(G.cineH, G.cine > 0 ? Math.min(70, H * 0.09) : 0, 0.12);
@@ -1213,7 +1229,9 @@ function loop(now) {
     if (G.hitStop > 0) G.hitStop--;
     else {
       acc += dt * (G.slow > 0 ? 0.25 : 1);
-      while (acc >= 1000 / 60) { acc -= 1000 / 60; update(); if (G.state !== 'play') break; }
+      let steps = 0; // never run more than 3 simulation steps per frame: a slow frame must not snowball
+      while (acc >= 1000 / 60 && steps++ < 3) { acc -= 1000 / 60; update(); if (G.state !== 'play') break; }
+      if (steps >= 3) acc = 0;
       if (G.state === 'play' && G.slow > 0 && --G.slow === 0) levelUpScreen();
     }
   } else if (G.state === 'title') updateTitle();

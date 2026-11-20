@@ -172,16 +172,21 @@ function drawExtrasWorld() {
 }
 
 // ---------- lighting + bloom (screen space, after the world) ----------
-const Q = { light: true, bloom: true, ft: 16, slow: 0 };
+const Q = { light: true, bloom: false, ft: 16, slow: 0 }; // bloom only on 'High': it copies the whole screen every frame
 const HAS_FILTER = typeof X.filter === 'string';
 let lightC = null, lightX = null, bloomC = null, bloomX = null, lastFx = 0;
-(function loadGfx() { const g = Save.get().gfx; if (g === 'low') { Q.light = false; Q.bloom = false; } })();
+(function loadGfx() { const g = Save.get().gfx; Q.light = g !== 'low'; Q.bloom = g === 'high'; if (g === 'low') { LOWRES = true; resize(); } })();
 function postFX() {
   const now = performance.now(), ft = now - lastFx; lastFx = now;
-  if (G.state === 'play' && ft < 200) { Q.ft = Q.ft * 0.95 + ft * 0.05; Q.slow = Q.ft > 24 ? Q.slow + 1 : 0; }
-  if (Q.slow > 120 && Save.get().gfx !== 'high') { // auto quality: drop the most expensive layer first
-    if (Q.bloom) { Q.bloom = false; toast('Graphics lowered for smooth play', '#8d93c4'); } else if (Q.light) Q.light = false;
-    Q.slow = 0;
+  if (G.state === 'play' && ft < 200) {
+    Q.ft = Q.ft * 0.95 + ft * 0.05; Q.jit = (Q.jit || 0) * 0.95 + Math.abs(ft - Q.ft) * 0.05;
+    // a steady 30 fps (iPhone Low Power Mode, throttled tab) is a cap, not a slow GPU: don't degrade for it
+    const capped = Math.abs(Q.ft - 33.3) < 2.5 && Q.jit < 3;
+    Q.slow = Q.ft > 21 && !capped ? Q.slow + 1 : 0;
+  }
+  if (Q.slow > 90 && Save.get().gfx !== 'high') { // auto quality: drop the most expensive layer first
+    if (Q.bloom) Q.bloom = false; else if (Q.light) Q.light = false; else if (!LOWRES) { LOWRES = true; resize(); }
+    toast('Graphics adjusted for smooth play', '#8d93c4'); Q.slow = 0; Q.ft = 16;
   }
   const S = 4, lw = Math.ceil(W / S), lh = Math.ceil(H / S);
   if (Q.light) {
