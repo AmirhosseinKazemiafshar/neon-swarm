@@ -86,7 +86,7 @@ function startStage(k, opt = {}) {
   G.mods = (opt.mods || [mod]).filter(m => m.id !== 'none');
   G.nextWave = Infinity; G.nextBoss = Infinity; G.eliteGap = G.eliteGap || 80; G.nextElite = G.eliteGap;
   const S = GAL[G.sys]; nebula.forEach((n, i) => n.c = i % 2 ? S.col : '#3c2bff');
-  G.state = 'play'; setPlayUi(true); AU.startMusic(); cam.z = baseZoom() * 1.25;
+  G.state = 'play'; setPlayUi(true); AU.startMusic(); cam.z = baseZoom();
   banner((opt.daily ? 'DAILY · ' : opt.nightmare ? 'NIGHTMARE ' : 'STAGE ') + stageLabel(k), opt.nightmare ? '#ff2e63' : S.col, G.mods.length ? G.mods.map(m => m.name).join(' · ') : S.name, 140);
   ring(P.x, P.y, 10, 160, S.col, 34, 6); burst(P.x, P.y, S.col, 30, 6, 3);
 }

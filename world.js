@@ -109,8 +109,8 @@ const DIR = {
     }
     if (ph === 'calm') {
       banner('CALM', '#5cffb0', 'Catch your breath · loot is coming', 110);
-      if (P.hp < P.maxHp) { P.hp++; HUD.heartHit = -1; }
-      const a = Math.random() * TAU; items.push({ x: clamp(P.x + Math.cos(a) * 160, 40, WORLD - 40), y: clamp(P.y + Math.sin(a) * 160, 40, WORLD - 40), kind: this.wave % 2 === 0 ? 'chest' : 'heart', v: 1, t: 0 });
+      // calm no longer heals for free; a heart only every 4th calm, a chest otherwise
+      const a = Math.random() * TAU; items.push({ x: clamp(P.x + Math.cos(a) * 160, 40, WORLD - 40), y: clamp(P.y + Math.sin(a) * 160, 40, WORLD - 40), kind: this.wave % 4 === 0 ? 'heart' : 'chest', v: 1, t: 0 });
       AU.tone(523, 0.3, 'sine', 0.05); AU.tone(659, 0.4, 'sine', 0.04, 0, 0.12);
     }
   },
@@ -203,7 +203,7 @@ function worldUpdate() {
 
 const BEACON_REWARDS = [
   { k: 'chest', icon: '▣', col: '#ffc94d', name: 'Treasure chest', desc: 'Open a chest right now' },
-  { k: 'repair', icon: '✚', col: '#5cffb0', name: 'Field repair', desc: 'Restore 3 HP' },
+  { k: 'repair', icon: '✚', col: '#5cffb0', name: 'Field repair', desc: 'Restore 2 HP' },
   { k: 'power', icon: '✦', col: '#ffe14d', name: 'Overcharge', desc: '+2 gun power' },
   { k: 'relic', icon: '◆', col: '#ff2e63', name: 'Relic', desc: 'A strong relic with a price' },
   { k: 'coins', icon: '¤', col: '#ffc94d', name: 'Salvage', desc: '+60 coins' },
@@ -223,7 +223,7 @@ function beaconReward(b) {
     resume(() => {
       G.state = 'play'; setPlayUi(true); P.inv = Math.max(P.inv, 60);
       if (o.k === 'chest') openChest();
-      else if (o.k === 'repair') { P.hp = Math.min(P.maxHp, P.hp + 3); HUD.heartHit = -1; }
+      else if (o.k === 'repair') { P.hp = Math.min(P.maxHp, P.hp + 2); HUD.heartHit = -1; }
       else if (o.k === 'power') gainPower(2);
       else if (o.k === 'relic') { relic.f(); G.relics.push(relic.id); toast('◆ ' + relic.name, '#ff2e63'); }
       else if (o.k === 'coins') G.coins += 60;

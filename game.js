@@ -294,9 +294,10 @@ function kill(e) {
   const st = STREAKS[G.streakIdx];
   if (st && G.combo >= st[0]) { G.streakIdx++; banner(st[1], st[2], G.combo + ' kill streak', 110); AU.sfx('streak'); flash(0.18, st[2]); punch(0.05); }
   const big = e.type === 'boss' || e.type === 'tank' || e.elite;
-  decals.push({ x: e.x, y: e.y, color: e.color, sc: e.r / 13, rot: Math.random() * TAU, life: 420 }); if (decals.length > 60) decals.shift();
-  burst(e.x, e.y, e.color, big ? 40 : 10, big ? 7 : 4.5, big ? 4 : 3);
-  shatter(e.x, e.y, e.color, big ? 16 : 5, big ? 7 : 4.5, big ? 9 : 5);
+  const crowd = enemies.length > 70; // big crowds: lighter kill effects so phones keep up
+  if (big || !crowd || G.kills % 3 === 0) { decals.push({ x: e.x, y: e.y, color: e.color, sc: e.r / 13, rot: Math.random() * TAU, life: 420 }); if (decals.length > 40) decals.shift(); }
+  burst(e.x, e.y, e.color, big ? 40 : crowd ? 4 : 10, big ? 7 : 4.5, big ? 4 : 3);
+  shatter(e.x, e.y, e.color, big ? 16 : crowd ? 2 : 5, big ? 7 : 4.5, big ? 9 : 5);
   burst(e.x, e.y, '#ffffff', big ? 12 : 4, 3, 2, 18);
   ring(e.x, e.y, e.r * 0.5, e.r * (big ? 5 : 2), e.color, big ? 34 : 12, big ? 6 : 2);
   const spew = (v, n) => { for (let i = 0; i < n; i++) { const a = Math.random() * TAU, s = rnd(1.5, 4.5) * (n > 1 ? 1.6 : 1); gems.push({ x: e.x, y: e.y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, v, t: Math.random() * 6, age: 0 }); } };
@@ -312,8 +313,9 @@ function kill(e) {
     const pc = (e.type === 'tank' ? 0.15 : e.type === 'dasher' ? 0.08 : 0) / (1 + G.tier);
     if (Math.random() < pc) items.push({ x: e.x, y: e.y, kind: 'power', v: 1, t: 0 });
     const roll = Math.random();
-    if (roll < 0.012) items.push({ x: e.x, y: e.y, kind: 'heart', t: 0 });
-    else if (roll < 0.019) items.push({ x: e.x, y: e.y, kind: 'magnet', t: 0 });
+    // hearts and magnets are rare finds (they used to show up every minute or so)
+    if (roll < 0.0025) items.push({ x: e.x, y: e.y, kind: 'heart', t: 0 });
+    else if (roll < 0.004) items.push({ x: e.x, y: e.y, kind: 'magnet', t: 0 });
   }
 }
 
@@ -435,7 +437,7 @@ function update() {
   const bossFight = G.mode === 'campaign' && G.node === 'boss';
   // gradual pressure: slow start, small packs from one direction, a cap that grows with time
   const rate = Math.min(6, 0.45 + D() / 24) * (bossFight ? 0.45 : 1) * DIR.rateMul();
-  const cap = Math.min(230, (8 + D() * 0.6) * DIR.capMul());
+  const cap = Math.min(TOUCH ? 150 : 180, (8 + D() * 0.6) * DIR.capMul());
   G.spawnAcc += rate / 60;
   while (G.spawnAcc >= 1 && !G.clearAt) {
     G.spawnAcc--; if (enemies.length >= cap) break;
@@ -528,7 +530,7 @@ function update() {
       if (it.kind === 'chest') openChest();
       else if (it.kind === 'frag') onFrag(it.ft);
       else if (it.kind === 'power') { gainPower(it.v || 1); ring(P.x, P.y, 10, 60, '#ffe14d', 16, 4); }
-      else if (it.kind === 'heart') { P.hp = Math.min(P.maxHp, P.hp + 2); HUD.heartHit = -1; text(P.x, P.y - 30, '+2 HP', '#ff4d6d', 22); ring(P.x, P.y, 10, 70, '#ff4d6d', 20, 4); flash(0.12, '#ff4d6d'); }
+      else if (it.kind === 'heart') { P.hp = Math.min(P.maxHp, P.hp + 1); HUD.heartHit = -1; text(P.x, P.y - 30, '+1 HP', '#ff4d6d', 22); ring(P.x, P.y, 10, 70, '#ff4d6d', 20, 4); flash(0.12, '#ff4d6d'); }
       else { gems.forEach(g => { g.pull = true; g.age = 99; }); text(P.x, P.y - 30, 'MAGNET!', '#4dd6ff', 22); ring(P.x, P.y, 10, 300, '#4dd6ff', 30, 5); flash(0.12, '#4dd6ff'); }
     }
   }
@@ -835,7 +837,7 @@ function draw() {
   } else X.drawImage(vignette(), 0, 0, W, H); // cached: no gradient rebuilt every frame
 
   // cinematic letterbox for boss intro
-  G.cineH = lerp(G.cineH, G.cine > 0 ? Math.min(70, H * 0.09) : 0, 0.12);
+  G.cineH = 0; // no letterbox bars: the HUD never jumps
   if (G.cineH > 0.5) { X.fillStyle = '#000'; X.fillRect(0, 0, W, G.cineH); X.fillRect(0, H - G.cineH, W, G.cineH); }
 
   // screen flash
@@ -978,7 +980,7 @@ function updateTitle() {
 function start(mode = 'endless') {
   newRun(mode); AU.startMusic();
   if (mode === 'campaign') { mapScreen(); return; }
-  G.state = 'play'; setPlayUi(true); cam.z = baseZoom() * 1.25;
+  G.state = 'play'; setPlayUi(true); cam.z = baseZoom();
   ring(P.x, P.y, 10, 160, '#3cf0ff', 34, 6); burst(P.x, P.y, '#3cf0ff', 30, 6, 3);
 }
 
@@ -989,7 +991,7 @@ function startNode(type) {
   G.diffBase = G.sys * 55 + G.step * 12 + (type === 'elite' ? 25 : 0) + (type === 'boss' ? 15 : 0);
   G.stageDur = type === 'battle' ? 45 : type === 'elite' ? 55 : Infinity;
   G.nextWave = 30; G.nextCore = Infinity; G.nextBoss = type === 'boss' ? 2.5 : Infinity; G.spawnAcc = 0; G.combo = 0; G.comboT = 0; G.streakIdx = 0; G.slow = 0;
-  P.x = P.y = WORLD / 2; P.vx = P.vy = 0; P.inv = 90; cam.x = P.x; cam.y = P.y; cam.z = baseZoom() * 1.25;
+  P.x = P.y = WORLD / 2; P.vx = P.vy = 0; P.inv = 90; cam.x = P.x; cam.y = P.y; cam.z = baseZoom();
   nebula.forEach((n, i) => n.c = sys.neb[i % 2]);
   G.state = 'play'; setPlayUi(true);
   banner(sys.name.toUpperCase(), sys.tint, type === 'boss' ? 'Destroy the Hive Core' : type === 'elite' ? 'Elite sector · survive 55 s' : 'Survive 45 s', 130);
@@ -1267,8 +1269,8 @@ let menuDrawnFor = null;
 function updateCamera() {
   if (G.state !== 'title') {
     // camera: follow with look-ahead, zoom out as the screen fills up, punch-in on big moments
-    const crowd = clamp(enemies.length / 260, 0, 1) * 0.06;
-    let zt = baseZoom() - crowd + (G.cine > 0 ? 0.1 : 0) + (G.state === 'over' ? 0.35 : 0) + (G.slow > 0 ? 0.08 : 0);
+    // steady view: no zoom-out when the screen fills (it read as 'the screen shrinks')
+    let zt = baseZoom() + (G.cine > 0 ? 0.04 : 0) + (G.state === 'over' ? 0.35 : 0) + (G.slow > 0 ? 0.08 : 0);
     cam.punch *= 0.88;
     cam.z = lerp(cam.z, zt, G.state === 'over' ? 0.03 : 0.035) + cam.punch * 0.12;
     const boss = G.cine > 60 && enemies.find(e => e.type === 'boss');
