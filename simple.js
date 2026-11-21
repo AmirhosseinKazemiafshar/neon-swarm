@@ -169,4 +169,4 @@ function moreModes() {
   const b = document.createElement('button'); b.className = 'btn ghost'; b.textContent = '‹ Back'; b.onclick = () => { AU.sfx('ui'); titleScreen(); };
   box.appendChild(b);
 }
-titleScreen();
+// the title is shown at boot by analytics.js (loaded last)
