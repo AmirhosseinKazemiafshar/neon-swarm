@@ -19,6 +19,7 @@ const STAGES_PER = 10, STAGE_TOTAL = GAL.length * STAGES_PER;
 const STAR_GATE = [0, 20, 45, 75, 110, 150];
 const HERO_GATE = { stormcaller: 0, pyro: 15, warden: 40 };
 const STAGE_LEN = 300; // seconds of waves before the boss
+const SLEN = () => G.stageLen || STAGE_LEN; // simple-mode stages are shorter
 const MODS = [
   { id: 'none', name: 'Standard sector', desc: '', apply() {} },
   { id: 'swift', name: 'Swift swarm', desc: 'Enemies move 20% faster', apply() { P.enemyFast *= 1.2; } },
@@ -96,12 +97,12 @@ const _featureUpdateG = featureUpdate;
 featureUpdate = function () {
   _featureUpdateG();
   if (G.mode !== 'stage') return;
-  if (!G.bossOut && G.t >= STAGE_LEN) {
+  if (!G.bossOut && G.t >= SLEN()) {
     G.bossOut = true; G.nextBoss = G.t; // the boss code in update() fires next frame
     setTimeout(() => {
       const b = enemies.find(e => e.type === 'boss'); if (!b) return;
-      const big = G.stage % STAGES_PER === 9, mul = (1 + G.stage * 0.06) * (big ? 2.2 : 1) * (G.nightmare ? 1.8 : 1);
-      b.hp = b.max = Math.round(b.hp * mul); b.r *= big ? 1.25 : 1; b.color = GAL[G.sys].col;
+      const big = G.stage % STAGES_PER === 9, mul = (1 + G.stage * 0.06) * (big ? 2.2 : 1) * (G.nightmare ? 1.8 : 1) * (G.simple ? 0.45 : 1);
+      b.max = Math.round(b.max * mul); b.hp = Math.round(b.hp * mul); // scale both (it used to heal a boss hit in its first frames) b.r *= big ? 1.25 : 1; b.color = GAL[G.sys].col;
       banner(big ? GAL[G.sys].boss.toUpperCase() : 'SECTOR GUARDIAN', GAL[G.sys].col, big ? 'System boss' : 'Destroy it to clear the stage', 140);
     }, 60);
   }
@@ -117,7 +118,7 @@ const _drawFeatureHudG = drawFeatureHud;
 drawFeatureHud = function () {
   _drawFeatureHudG();
   if (G.mode !== 'stage' || G.state === 'title') return;
-  const top = 10 + G.cineH * 0.9, left = Math.max(0, STAGE_LEN - G.t);
+  const top = 10 + G.cineH * 0.9, left = Math.max(0, SLEN() - G.t);
   X.font = '800 10px system-ui'; X.textAlign = 'center'; X.textBaseline = 'middle';
   X.fillStyle = G.bossOut ? '#ff2e63' : '#8d93c4';
   X.fillText(G.bossOut ? (G.stageDone ? 'STAGE CLEAR' : 'BOSS FIGHT') : 'BOSS IN ' + Math.floor(left / 60) + ':' + String(Math.floor(left % 60)).padStart(2, '0'), W / 2, top + 120);
@@ -140,7 +141,7 @@ function stageWin() {
   if (G.state === 'levelup' || G.state === 'chest' || G.state === 'beacon' || G.state === 'pause') { setTimeout(stageWin, 400); return; }
   if (G.state !== 'play') return;
   G.state = 'over'; setPlayUi(false); joy = null;
-  const k = G.stage, starsNow = 1 + (G.hpLost <= 2 ? 1 : 0) + (G.t <= STAGE_LEN + 90 ? 1 : 0);
+  const k = G.stage, starsNow = 1 + (G.hpLost <= 2 ? 1 : 0) + (G.t <= SLEN() + 90 ? 1 : 0);
   G.perfect = starsNow === 3; G.cleared = true;
   const p = prog(), key = G.nightmare ? 'nstars' : 'gstars', prev = (G.nightmare ? p.nstars : p.stars)[k] || 0;
   const newStars = Math.max(0, starsNow - prev), mlBefore = masteryLv(G.ship);
@@ -157,7 +158,7 @@ function stageWin() {
   const hasNext = k + 1 < STAGE_TOTAL && !G.daily;
   show(`<div class="lv in" style="color:#5cffb0">${G.daily ? 'DAILY CHALLENGE' : (G.nightmare ? 'NIGHTMARE ' : 'STAGE ') + stageLabel(k)} CLEARED</div>
     <div class="stars in">${[0, 1, 2].map(i => `<i class="${i < starsNow ? 'on' : ''}" style="animation-delay:${0.35 + i * 0.28}s">★</i>`).join('')}</div>
-    <div class="starreq in"><span class="${'on'}">✓ Defeat the boss</span><span class="${G.hpLost <= 2 ? 'on' : ''}">${G.hpLost <= 2 ? '✓' : '✗'} Lose 2 HP or less</span><span class="${G.t <= STAGE_LEN + 90 ? 'on' : ''}">${G.t <= STAGE_LEN + 90 ? '✓' : '✗'} Boss down within 1:30</span></div>
+    <div class="starreq in"><span class="${'on'}">✓ Defeat the boss</span><span class="${G.hpLost <= 2 ? 'on' : ''}">${G.hpLost <= 2 ? '✓' : '✗'} Lose 2 HP or less</span><span class="${G.t <= SLEN() + 90 ? 'on' : ''}">${G.t <= SLEN() + 90 ? '✓' : '✗'} Boss down within 1:30</span></div>
     <div class="score in"><span>REWARD</span><b id="sc">0</b></div>
     <p class="tag in">+${xp} ${hero().name} mastery${newStars ? ' · +' + newStars + ' new ★' : ''}</p>
     ${unlocked.length ? `<div class="mres in">${unlocked.map(u => `<div><span>🔓 ${u}</span></div>`).join('')}</div>` : ''}${missionResultsHtml()}
@@ -179,7 +180,7 @@ endScreen = (function (orig) {
     if (G.mode !== 'stage') return orig(won);
     const cr = rewardCrystals(false);
     if (!G.paid) { G.paid = true; Save.bump(s => s.credits = (s.credits || 0) + cr); addMastery(false); onRunEnd(); }
-    const left = Math.max(0, STAGE_LEN - G.t);
+    const left = Math.max(0, SLEN() - G.t);
     show(`<div class="lv in" style="color:#ff2e63">${G.daily ? 'DAILY CHALLENGE' : 'STAGE ' + stageLabel(G.stage)} FAILED</div>
       <div class="h2 in">${G.bossOut ? 'So close — the boss was out!' : 'Boss in ' + fmt(left)}</div>
       <div class="score in"><span>SALVAGED</span><b>${fmtC(cr)}</b></div>${missionResultsHtml()}
@@ -335,5 +336,4 @@ titleScreen = function () {
 // hangar / records "back" returns to this title automatically (they call titleScreen)
 
 // ---------- boot ----------
-titleScreen();
-requestAnimationFrame(loop);
+requestAnimationFrame(loop); // the title is shown by simple.js (loaded last)

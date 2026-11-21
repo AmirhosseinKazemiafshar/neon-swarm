@@ -247,7 +247,7 @@ function shatter(x, y, color, n, spd, size) {
 }
 function ring(x, y, r0, r1, color, life = 22, w = 4) { rings.push({ x, y, r0, r1, color, life, max: life, w }); }
 function text(x, y, s, color = '#fff', size = 15) { if (texts.length < 90) texts.push({ x, y, s, color, size, life: 42, max: 42, vx: rnd(-0.8, 0.8), vy: -2.2 }); }
-function shake(v) { const m = SETTINGS.shake; if (REDUCED || !m) return; G.shake = Math.min(0.85, G.shake + v / 55 * m); }
+function shake(v) { const m = SETTINGS.shake; if (REDUCED || !m) return; G.shake = Math.min(0.6, G.shake + v / 80 * m); } // gentler: shake is for big moments only
 function flash(a, color = '#fff') { if (!REDUCED) { G.flash = Math.max(G.flash, a); G.flashCol = color; } }
 function punch(z) { if (!REDUCED) cam.punch = Math.max(cam.punch, z); }
 function buzz(ms) { if (typeof SETTINGS !== 'undefined' && SETTINGS.vibe === false) return; try { if (navigator.vibrate && (!navigator.userActivation || navigator.userActivation.hasBeenActive)) navigator.vibrate(ms); } catch (e) {} }
@@ -306,7 +306,7 @@ function kill(e) {
     for (let k = 0; k < 4; k++) ring(e.x, e.y, 10, 200 + k * 80, ['#ff2e63', '#ffe14d', '#3cf0ff', '#fff'][k], 30 + k * 8, 6);
     spew(5, 18); items.push({ x: e.x, y: e.y, kind: 'heart', t: 0 }, { x: e.x - 30, y: e.y, kind: 'power', v: 2, t: 0 }, { x: e.x + 30, y: e.y, kind: 'power', v: 2, t: 0 });
   } else {
-    if (big) { G.hitStop = 3; shake(6); buzz(25); punch(0.02); }
+    if (big) { G.hitStop = 3; shake(3); punch(0.02); }
     AU.sfx('kill'); spew(e.xp, 1);
     // power cores: tougher enemies drop them more often; every 35 kills is a guaranteed core
     // milestones spread further apart each tier so the gun grows step by step, not all at once
@@ -578,10 +578,10 @@ function shapePath(e, r) {
 
 function drawShip(x, y, ang, stretch, alpha = 1, ghost = false) {
   X.save(); X.translate(x, y); X.rotate(ang); X.scale(1 + stretch * 0.22, 1 - stretch * 0.15); X.globalAlpha = alpha;
-  const s = ghost ? SPR.white(SPR.ship(G.ship)) : SPR.ship(G.ship), sc = 0.82;
+  const s = ghost ? SPR.white(SPR.ship(G.ship)) : SPR.ship(G.ship), sc = 0.82 * (G.shipScale || 1); // bigger ship after each evolution
   if (!ghost) {
     const fl = 10 + Math.random() * 7 + stretch * 14;
-    X.fillStyle = '#ff7a2e'; X.beginPath(); X.moveTo(-12, -6); X.quadraticCurveTo(-12 - fl, 0, -12, 6); X.fill();
+    X.fillStyle = G.flameCol || '#ff7a2e'; X.beginPath(); X.moveTo(-12, -6); X.quadraticCurveTo(-12 - fl, 0, -12, 6); X.fill();
     X.fillStyle = '#ffe14d'; X.beginPath(); X.moveTo(-12, -3); X.quadraticCurveTo(-12 - fl * 0.6, 0, -12, 3); X.fill();
   }
   if (ghost) X.globalAlpha = alpha * 0.6;
@@ -1261,7 +1261,8 @@ function loop(now) {
   const menu = G.state === 'levelup' || G.state === 'chest' || G.state === 'beacon' || G.state === 'pause' || G.state === 'map';
   if (menu) { if (menuDrawnFor === G.state) { requestAnimationFrame(loop); return; } menuDrawnFor = G.state; } else menuDrawnFor = null;
   syncButtons();
-  draw();
+  // one bad frame (e.g. a 0-size canvas while the window resizes) must never stop the game
+  try { draw(); } catch (err) { if (!loop.errShown) { loop.errShown = true; console.error(err); } }
   requestAnimationFrame(loop);
 }
 let menuDrawnFor = null;

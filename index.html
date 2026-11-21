@@ -118,6 +118,21 @@ table.board{width:100%;border-collapse:collapse;font-size:14px;background:var(--
 .rec{font-size:11px}.rec i{font-style:normal}
 .card p.evo{font-size:11.5px;font-weight:800;margin-top:4px;letter-spacing:.2px}
 .build .evo{opacity:.55}.build .evo.done{opacity:1}
+.screen.solid{background:rgba(7,9,18,.95)}
+.play{font-size:21px;padding:15px;letter-spacing:2px}
+.gain{font-size:38px;font-weight:900;color:#7fd1ff;text-align:center;margin:4px 0}
+.tierline{text-align:center;font-size:13px;font-weight:800;margin:10px 0 6px;color:var(--muted)}.tierline.evolved{animation:pop .5s}
+.up3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.upb{background:rgba(18,21,42,.92);border:1.5px solid rgba(255,255,255,.12);border-radius:14px;padding:9px 4px 8px;color:var(--ink);font:inherit;display:flex;flex-direction:column;align-items:center;gap:1px;cursor:pointer;min-width:0}
+.upb i{font-style:normal;font-size:22px;line-height:1.1}.upb b{font-size:13px}.upb em{font-style:normal;font-size:11px;color:var(--muted)}
+.upb .cost{font-size:12px;font-weight:800;color:#7f86c0;margin-top:3px}
+.upb.can{border-color:#5cffb0;box-shadow:0 0 14px rgba(92,255,176,.22)}.upb.can .cost{color:#5cffb0}
+.upb:disabled{opacity:.55}.upb.bought{animation:pop .35s}.upb.nope{animation:nope .3s}
+.upp{display:flex;gap:3px;margin-top:4px}.upp s{width:12px;height:4px;border-radius:2px;background:rgba(255,255,255,.15)}.upp s.on{background:#5cffb0}
+.btn.evo{background:linear-gradient(90deg,#b06bff,#ff6bd5);color:#fff;margin-top:10px;display:flex;flex-direction:column;align-items:center}.btn.evo small{font-size:11px;font-weight:700;opacity:.85}.btn.evo:disabled{opacity:.5}
+.hint{text-align:center;font-size:12.5px;color:var(--muted);margin:8px 0 0}
+@keyframes pop{0%{transform:scale(1)}40%{transform:scale(1.08)}100%{transform:scale(1)}}
+@keyframes nope{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
 .card p b{color:var(--ink);font-size:inherit;font-weight:800}.card p.tip{font-size:11.5px;color:#7f86c0;margin-top:4px;font-style:italic}
 .build{display:grid;grid-template-columns:1fr 1fr;gap:6px;text-align:left;max-height:38vh;overflow-y:auto}.build div{background:var(--panel);border:1px solid #23284d;border-radius:12px;padding:7px 9px;font-size:12px}.build span{margin-right:5px}.build em{font-style:normal;color:var(--gold);font-size:10px;margin-left:5px}.build p{margin:2px 0 0;color:var(--muted);font-size:10.5px;line-height:1.3}
 .pvcard{gap:10px;padding:10px 12px 10px 10px}.pv{flex:0 0 92px;width:92px;height:60px;border-radius:12px;background:#0b0e20;box-shadow:inset 0 0 0 1px #2a3060}
@@ -132,12 +147,13 @@ table.board{width:100%;border-collapse:collapse;font-size:14px;background:var(--
 <button id="hudbtn" aria-label="Pause">❚❚</button>
 <button id="dash" aria-label="Dash"><span>DASH</span></button>
 <div id="scr" class="screen"><div class="box" id="box"></div></div>
-<script src="sprites.js?v=1795189895"></script>
-<script src="game.js?v=1795189895"></script>
-<script src="features.js?v=1795189895"></script>
-<script src="world.js?v=1795189895"></script>
-<script src="heroes.js?v=1795189895"></script>
-<script src="galaxy.js?v=1795189895"></script>
-<script src="previews.js?v=1795189895"></script>
-<script src="arsenal.js?v=1795189895"></script>
+<script src="sprites.js?v=1795251000"></script>
+<script src="game.js?v=1795251000"></script>
+<script src="features.js?v=1795251000"></script>
+<script src="world.js?v=1795251000"></script>
+<script src="heroes.js?v=1795251000"></script>
+<script src="galaxy.js?v=1795251000"></script>
+<script src="previews.js?v=1795251000"></script>
+<script src="arsenal.js?v=1795251000"></script>
+<script src="simple.js?v=1795251000"></script>
 </body></html>

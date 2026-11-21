@@ -98,20 +98,20 @@ AU.sfx = function (name) {
   else { this.tone(760 - big * 90, 0.05, 'square', 0.02, -380); this.noise(0.025, 0.022, 5200); }
 };
 // crits: gold spark, a 2-frame pause and a tiny buzz (all rate-limited)
-let critLast = 0;
+let critLast = 0, critBuzz = 0;
 onCrit = function (e) {
   const now = performance.now();
   burst(e.x, e.y, '#ffe14d', 5, 4, 2.5, 18);
   if (now - critLast < 160) return; critLast = now;
   ring(e.x, e.y, 4, 26, '#ffe14d', 10, 3);
-  G.hitStop = Math.max(G.hitStop, 2); buzz(8);
+  G.hitStop = Math.max(G.hitStop, 2); if (now - critBuzz > 600) { critBuzz = now; buzz(8); }
   if (AU.ok('crit', 90)) AU.tone(1900, 0.05, 'triangle', 0.028, 500);
 };
 let blastBuzz = 0;
 const _blastA = blast;
 blast = function (x, y, R, dmg, col, skip) {
   _blastA(x, y, R, dmg, col, skip);
-  const now = performance.now(); if (now - blastBuzz > 220) { blastBuzz = now; buzz(12); }
+  // no vibration per blast: explosive rounds made the phone buzz non-stop
 };
 
 // ===== hits: ricochet trail + evolution effects =====

@@ -53,7 +53,7 @@ function explode(x, y, R, color) {
     smokes.push({ x: x + Math.cos(a) * R * 0.2, y: y + Math.sin(a) * R * 0.2, vx: Math.cos(a) * s, vy: Math.sin(a) * s, r: R * rnd(0.12, 0.22), vr: R * 0.012, life: 48, max: 48, c: 'rgba(36,32,58,' });
   }
   flashes.push({ x, y, r: R * 0.9, life: 9, max: 9, color });
-  shake(Math.min(10, R / 14));
+  if (R >= 70) shake(Math.min(7, R / 20)); // small blasts (explosive rounds hit every shot) never shake
   if (AU.ok('boom', 60)) { AU.noise(0.35, 0.12, 500); AU.tone(70, 0.3, 'sine', 0.12, -30); }
 }
 function coinBurst(x, y, n) {
@@ -206,7 +206,7 @@ function postFX() {
     for (const it of items) hole(it.x, it.y, 80, 0.7);
     for (const m of missiles) hole(m.x, m.y, 70, 0.6);
     for (const e of enemies) if (e.elite || e.type === 'boss') hole(e.x, e.y, e.r * 4, 0.55);
-    X.save(); X.setTransform(DPR, 0, 0, DPR, 0, 0); X.imageSmoothingEnabled = true; X.drawImage(lightC, 0, 0, W, H); X.restore();
+    if (lightC.width > 0 && lightC.height > 0) { X.save(); X.setTransform(DPR, 0, 0, DPR, 0, 0); X.imageSmoothingEnabled = true; X.drawImage(lightC, 0, 0, W, H); X.restore(); }
   }
   if (Q.bloom && HAS_FILTER) {
     if (!bloomC) { bloomC = document.createElement('canvas'); bloomX = bloomC.getContext('2d'); }
