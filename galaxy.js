@@ -309,7 +309,7 @@ titleScreen = function () {
   for (let i = 0; i < 30; i++) spawn(['grunt', 'swarm', 'tank', 'dasher'][i % 4], WORLD / 2 + rnd(-600, 600), WORLD / 2 + rnd(-700, 700));
   enemies.forEach(e => { e.spawnT = 0; e.tx = e.x; e.ty = e.y; });
   const p = prog(), today = new Date().toDateString(), dailyDone = p.daily.date === today;
-  show(`<div class="logo in">NEON<span>SWARM</span></div>
+  show(`<div class="logo in">HIVE<span>STORM</span></div>
     <div class="galtop in"><span>⭐ ${totalStars(p)}</span><span>${fmtC(p.crystals)}</span></div>
     <div class="shipsel in" id="shipsel"></div>
     <p class="goal in">${nextGoal()}</p>

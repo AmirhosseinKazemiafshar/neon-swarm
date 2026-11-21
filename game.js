@@ -955,7 +955,7 @@ function titleScreen() {
   newRun(); P.inv = 0;
   for (let i = 0; i < 30; i++) spawn(['grunt', 'swarm', 'tank', 'dasher'][i % 4], WORLD / 2 + rnd(-600, 600), WORLD / 2 + rnd(-700, 700));
   enemies.forEach(e => { e.spawnT = 0; e.tx = e.x; e.ty = e.y; });
-  show(`<div class="logo in">NEON<span>SWARM</span></div>
+  show(`<div class="logo in">HIVE<span>STORM</span></div>
     <p class="tag in">Survive the swarm. Grow unstoppable.</p>
     ${titleExtrasHtml()}
     <div class="stats in"><div class="stat"><b>${fmt(s.best)}</b><span>Best time</span></div><div class="stat"><b>${s.bestKills}</b><span>Best kills</span></div><div class="stat"><b>${s.rounds}</b><span>Runs</span></div></div>

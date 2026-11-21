@@ -257,7 +257,7 @@ titleScreen = function () {
   for (let i = 0; i < 30; i++) spawn(['grunt', 'swarm', 'tank', 'dasher'][i % 4], WORLD / 2 + rnd(-600, 600), WORLD / 2 + rnd(-700, 700));
   enemies.forEach(e => { e.spawnT = 0; e.tx = e.x; e.ty = e.y; });
   const p = sp(); shipLook(p.tier);
-  show(`<div class="logo in">NEON<span>SWARM</span></div>
+  show(`<div class="logo in">HIVE<span>STORM</span></div>
     <div class="lv in" style="color:${SHIP_TIERS[p.tier].col}">STAGE ${p.stage + 1}</div>
     <p class="tag in">${p.stage ? 'Beat the guardian to reach the next stage' : 'Survive the swarm, beat the guardian'}</p>
     <button class="btn in play" id="play">▶ PLAY</button>
