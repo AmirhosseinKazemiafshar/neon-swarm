@@ -34,7 +34,7 @@ let SIMPLE_NEXT = false;
 const _onNewRunS = onNewRun;
 onNewRun = function () {
   _onNewRunS();
-  G.simple = SIMPLE_NEXT; G.paidS = false; scr.classList.remove('solid');
+  G.simple = SIMPLE_NEXT; G.paidS = false; scr.classList.remove('solid'); pylons = []; G.pylonAt = 0;
   if (!G.simple) { G.stageLen = 0; G.shipScale = 1; G.flameCol = null; return; }
   const p = sp();
   // only the 7 base cards and the hero skills: no research, no fragments
@@ -70,21 +70,102 @@ onKill = function (e) {
 function bossAI(e, dx, dy, d) {
   if (!G.simple) return null;
   const k = G.stage, chase = Math.min(2.6, 1.7 + k * 0.08);
-  e.ai = e.ai || { t: 140, m: 'chase', ang: 0 };
+  if (!e.ai) secretInit(e);
   const A = e.ai; A.t--;
+  if (e.exposedT > 0) e.exposedT--;
+  if (e.stunT > 0) { e.stunT--; e.sq = 0.3 + Math.sin(G.frame * 0.5) * 0.2; return [0, 0]; }
+  // secret 1: dash straight through the shield to shatter it
+  if (e.secret === 'dash' && e.exposedT <= 0 && P.dashT > 0 && d < e.r + P.r + 16 && G.frame > (e.brkLock || 0)) { e.brkLock = G.frame + 30; expose(e, 240, 70, 'SHIELD BROKEN!'); return [0, 0]; }
   if (A.m === 'chase') {
-    if (A.t <= 0 && d < 520) { A.m = 'wind'; A.t = 42; A.ang = Math.atan2(dy, dx); AU.tone(160, 0.5, 'sawtooth', 0.05, 260); ring(e.x, e.y, e.r * 2.4, e.r, '#ff2e63', 40, 4); }
+    // it turns toward you (not instantly), so its back is open right after a charge
+    let df = Math.atan2(dy, dx) - e.face; df = Math.atan2(Math.sin(df), Math.cos(df)); e.face += clamp(df, -0.035, 0.035);
+    if (A.t <= 0 && d < 520) { A.m = 'wind'; A.t = 42; A.ang = Math.atan2(dy, dx); e.face = A.ang; AU.tone(160, 0.5, 'sawtooth', 0.05, 260); ring(e.x, e.y, e.r * 2.4, e.r, '#ff2e63', 40, 4); }
     return [dx / d * chase, dy / d * chase];
   }
   if (A.m === 'wind') { e.sq = 0.6 + Math.sin(A.t * 0.6) * 0.4; if (A.t <= 0) { A.m = 'charge'; A.t = 30; } return [0, 0]; }
   if (A.m === 'charge') {
     if (G.frame % 2 === 0) ghosts.push({ x: e.x, y: e.y, ang: A.ang, life: 12, enemy: e.color, r: e.r });
-    if (A.t <= 0) { A.m = 'rest'; A.t = 40; }
+    // secret 3: a charge into a pylon stuns it
+    for (let i = pylons.length - 1; i >= 0; i--) { const p = pylons[i]; if ((p.x - e.x) ** 2 + (p.y - e.y) ** 2 < (e.r + p.r) ** 2) { pylons.splice(i, 1); explode(p.x, p.y, 70, '#ff6bd5'); expose(e, 300, 120, 'CRASHED!'); if (!pylons.length) G.pylonAt = G.t + 3; return [0, 0]; } }
+    if (A.t <= 0) { A.m = 'rest'; A.t = e.secret === 'back' ? 100 : 40; }
     return [Math.cos(A.ang) * (9 + k * 0.3), Math.sin(A.ang) * (9 + k * 0.3)];
   }
   if (A.t <= 0) { A.m = 'chase'; A.t = Math.max(120, 220 - k * 12); } // rest: a short window to punish it
   return [dx / d * 0.5, dy / d * 0.5];
 }
+
+// ===== guardian secrets: from stage 3 on, every guardian has a weakness you must discover =====
+const SECRETS = {
+  dash: { name: 'SHIELDED GUARDIAN', col: '#7fe8ff', clue: 'Its shield shatters if you DASH straight through it' },
+  back: { name: 'ARMORED GUARDIAN', col: '#ffd84d', clue: 'Armored in front: after it charges past you, shoot its glowing back' },
+  pylon: { name: 'UNSTOPPABLE GUARDIAN', col: '#ff6bd5', clue: 'Hide behind a pylon so its charge crashes into it' },
+};
+const secretFor = k => k < 2 ? null : ['dash', 'back', 'pylon'][(k - 2) % 3];
+let pylons = [];
+function placePylons() {
+  pylons = []; const a0 = Math.random() * TAU;
+  for (let i = 0; i < 4; i++) { const a = a0 + i * TAU / 4; pylons.push({ x: P.x + Math.cos(a) * 250, y: P.y + Math.sin(a) * 250, r: 24 }); }
+  for (const p of pylons) ring(p.x, p.y, 4, 40, '#ff6bd5', 20, 3);
+}
+function secretInit(e) {
+  e.ai = { t: 140, m: 'chase', ang: 0 }; e.face = Math.atan2(P.y - e.y, P.x - e.x); e.exposedT = 0;
+  e.secret = secretFor(G.stage); if (!e.secret) return;
+  const S = SECRETS[e.secret], q = Save.get().simple || {}, fails = (q.fails || {})[G.stage] || 0, known = (q.found || {})[e.secret];
+  if (e.secret === 'pylon') placePylons();
+  setTimeout(() => banner(S.name, S.col, known || fails >= 2 ? '💡 ' + S.clue : 'Bullets bounce off · find its weakness', 220), 900);
+}
+function expose(e, t, stun, label) {
+  e.exposedT = t; e.stunT = stun; e.ai.m = 'rest'; e.ai.t = stun + 30;
+  text(e.x, e.y - e.r - 18, label, '#ff4d6d', 22); ring(e.x, e.y, e.r, e.r * 3, '#ff4d6d', 26, 6); burst(e.x, e.y, '#cfefff', 30, 6, 3);
+  flash(0.25, '#ff4d6d'); shake(6); punch(0.05); buzz(40); AU.sfx('big');
+  const q = Save.get().simple || {};
+  if (!(q.found || {})[e.secret]) { spSave(S => { S.found = S.found || {}; S.found[e.secret] = true; }); toast('★ Weakness found: ' + SECRETS[e.secret].clue.split(':')[0].replace(/ if you.*/, ''), '#ffd84d'); }
+}
+// bullets (and skills) only hurt a guarded guardian through its weakness
+const _damageS = damage;
+damage = function (e, dmg, kx = 0, ky = 0) {
+  if (G.simple && e.type === 'boss' && e.secret && e.exposedT <= 0) {
+    let open = false;
+    if (e.secret === 'back') { const l = Math.hypot(kx, ky); open = l > 0 && (kx * Math.cos(e.face) + ky * Math.sin(e.face)) / l > 0.25; }
+    if (!open) {
+      if (G.frame - (e.blockFx || 0) > 6) { e.blockFx = G.frame; burst(e.x + rnd(-e.r, e.r) * 0.6, e.y + rnd(-e.r, e.r) * 0.6, '#cfefff', 3, 3, 2, 12); if (AU.ok('block', 150)) AU.tone(2300, 0.03, 'triangle', 0.018, -700); }
+      if (G.frame - (e.blockTxt || -999) > 150) { e.blockTxt = G.frame; text(e.x, e.y - e.r - 14, 'BLOCKED', '#cfefff', 13); }
+      return;
+    }
+  }
+  // weak-spot hits (exposed, or the glowing back) hit 1.5× / 1.8× harder
+  const weak = e.secret === 'back' && e.exposedT <= 0;
+  return _damageS(e, e.exposedT > 0 ? dmg * 1.5 : weak ? dmg * 1.8 : dmg, kx, ky);
+};
+// pylons come back if they were all used up
+const _featureUpdateS = featureUpdate;
+featureUpdate = function () { _featureUpdateS(); if (G.simple && G.pylonAt && G.t >= G.pylonAt) { G.pylonAt = 0; if (enemies.some(e => e.type === 'boss' && !e.dead)) placePylons(); } };
+// drawing: shield bubble, armored front + glowing back, wind-up aim line, pylons
+const _drawExtrasS = drawExtrasWorld;
+drawExtrasWorld = function () {
+  _drawExtrasS();
+  if (!G.simple) return;
+  for (const p of pylons) {
+    glow(p.x, p.y, 60, '#ff6bd5', 0.35); X.globalAlpha = 1; X.globalCompositeOperation = 'source-over';
+    X.fillStyle = '#2a1b3d'; X.strokeStyle = '#ff6bd5'; X.lineWidth = 3; X.beginPath();
+    for (let i = 0; i < 6; i++) { const a = i * TAU / 6 + G.frame * 0.01; X.lineTo(p.x + Math.cos(a) * p.r, p.y + Math.sin(a) * p.r); } X.closePath(); X.fill(); X.stroke();
+  }
+  for (const e of enemies) {
+    if (e.type !== 'boss' || e.dead || !e.ai) continue;
+    if (e.ai.m === 'wind') { X.strokeStyle = `rgba(255,46,99,${0.35 + Math.sin(G.frame * 0.5) * 0.2})`; X.lineWidth = e.r * 0.9; X.lineCap = 'round'; X.beginPath(); X.moveTo(e.x, e.y); X.lineTo(e.x + Math.cos(e.ai.ang) * 420, e.y + Math.sin(e.ai.ang) * 420); X.stroke(); }
+    if (!e.secret) continue;
+    if (e.exposedT > 0) { if ((G.frame >> 2) & 1) { X.strokeStyle = '#ff4d6d'; X.lineWidth = 3; X.setLineDash([8, 8]); X.beginPath(); X.arc(e.x, e.y, e.r + 10, 0, TAU); X.stroke(); X.setLineDash([]); } continue; }
+    if (e.secret === 'back') {
+      X.strokeStyle = '#ffd84d'; X.lineWidth = 9; X.lineCap = 'round'; X.beginPath(); X.arc(e.x, e.y, e.r + 8, e.face - 1.5, e.face + 1.5); X.stroke();
+      const bx = e.x - Math.cos(e.face) * (e.r + 2), by = e.y - Math.sin(e.face) * (e.r + 2);
+      glow(bx, by, 34 + Math.sin(G.frame * 0.2) * 6, '#ff4d6d', 0.8); X.globalAlpha = 1; X.globalCompositeOperation = 'source-over';
+      X.fillStyle = '#ffe0e6'; X.beginPath(); X.arc(bx, by, 7, 0, TAU); X.fill();
+    } else {
+      X.strokeStyle = `rgba(127,232,255,${0.55 + Math.sin(G.frame * 0.1) * 0.2})`; X.lineWidth = 4; X.beginPath(); X.arc(e.x, e.y, e.r + 12, 0, TAU); X.stroke();
+      X.fillStyle = 'rgba(127,232,255,.08)'; X.fill();
+    }
+  }
+};
 
 // ===== results: always a reward, upgrades right there, one tap to go again =====
 // a loss ≈ 10–18 ⚙, a win ≈ 30–45 ⚙: one upgrade every one or two tries
@@ -102,10 +183,16 @@ endScreen = function (won) { if (!G.simple) return _endScreenS(won); simpleResul
 function simpleResult(win) {
   if (!G.paidS) {
     G.paidS = true; G.lastCr = simpleReward(win); G.won = win;
-    spSave(S => { S.scrap = (S.scrap || 0) + G.lastCr; if (win) S.stage = Math.max(S.stage || 0, G.stage + 1); });
+    spSave(S => { S.scrap = (S.scrap || 0) + G.lastCr; if (win) S.stage = Math.max(S.stage || 0, G.stage + 1); else if (G.bossOut) { S.fails = S.fails || {}; S.fails[G.stage] = (S.fails[G.stage] || 0) + 1; } });
     onRunEnd(); AU.sfx(win ? 'level' : 'pick');
   }
   resultScreen(win, false);
+}
+function secretHint(win) {
+  const sec = secretFor(G.stage); if (win || !sec || !G.bossOut) return '';
+  const q = Save.get().simple || {}, fails = (q.fails || {})[G.stage] || 0, known = (q.found || {})[sec];
+  if (known || fails >= 2) return `<p class="clue in">💡 ${SECRETS[sec].clue}</p>`;
+  return `<p class="clue in">🔒 This guardian has a weakness. Watch it closely…</p>`;
 }
 function resultScreen(win, doubled) {
   const k = G.stage, left = Math.max(0, G.stageLen - G.t);
@@ -114,6 +201,7 @@ function resultScreen(win, doubled) {
     <p class="tag in">${sub}</p>
     <div class="gain in">+⚙ <b id="sc">0</b></div>
     ${doubled ? '' : '<button class="btn cyan in" id="dbl">▶ Double it · watch ad</button>'}
+    ${secretHint(win)}
     <div id="ups" class="in"></div>
     <button class="btn in play" id="go">${win ? 'NEXT STAGE ›' : '↻ TRY AGAIN'}</button>
     <button class="btn ghost in" id="menu">Menu</button>`);
