@@ -18,11 +18,12 @@ const UPS = [
 ];
 const PER_TIER = 3;
 const upCap = t => PER_TIER * (t + 1);
-const upCost = l => 15 + l * 12;
-const evoCost = t => 60 + t * 50;
+// scrap (⚙) is its own currency: old galaxy crystals and mission rewards can't buy these, so every upgrade is earned here
+const upCost = l => 20 + l * 15;
+const evoCost = t => 100 + t * 80;
 function sp() {
   const s = Save.get(), m = s.simple || {};
-  return { stage: m.stage || 0, tier: m.tier || 0, up: Object.assign({ dmg: 0, hp: 0, rate: 0 }, m.up || {}), crystals: s.credits || 0 };
+  return { stage: m.stage || 0, tier: m.tier || 0, up: Object.assign({ dmg: 0, hp: 0, rate: 0 }, m.up || {}), crystals: m.scrap || 0 };
 }
 function spSave(fn) { Save.bump(x => { x.simple = x.simple || {}; x.simple.up = x.simple.up || {}; fn(x.simple, x); }); }
 const allMaxed = (p = sp()) => UPS.every(u => p.up[u.id] >= upCap(p.tier));
@@ -64,8 +65,30 @@ onKill = function (e) {
   if (G.simple) for (let i = items.length - 1; i >= 0; i--) if (items[i].kind === 'frag') items.splice(i, 1);
 };
 
+// ===== the guardian hunts you: it follows, then winds up and charges in a straight line =====
+// (the old Hive Core drifted at 0.8 speed and could simply be outrun)
+function bossAI(e, dx, dy, d) {
+  if (!G.simple) return null;
+  const k = G.stage, chase = Math.min(2.6, 1.7 + k * 0.08);
+  e.ai = e.ai || { t: 140, m: 'chase', ang: 0 };
+  const A = e.ai; A.t--;
+  if (A.m === 'chase') {
+    if (A.t <= 0 && d < 520) { A.m = 'wind'; A.t = 42; A.ang = Math.atan2(dy, dx); AU.tone(160, 0.5, 'sawtooth', 0.05, 260); ring(e.x, e.y, e.r * 2.4, e.r, '#ff2e63', 40, 4); }
+    return [dx / d * chase, dy / d * chase];
+  }
+  if (A.m === 'wind') { e.sq = 0.6 + Math.sin(A.t * 0.6) * 0.4; if (A.t <= 0) { A.m = 'charge'; A.t = 30; } return [0, 0]; }
+  if (A.m === 'charge') {
+    if (G.frame % 2 === 0) ghosts.push({ x: e.x, y: e.y, ang: A.ang, life: 12, enemy: e.color, r: e.r });
+    if (A.t <= 0) { A.m = 'rest'; A.t = 40; }
+    return [Math.cos(A.ang) * (9 + k * 0.3), Math.sin(A.ang) * (9 + k * 0.3)];
+  }
+  if (A.t <= 0) { A.m = 'chase'; A.t = Math.max(120, 220 - k * 12); } // rest: a short window to punish it
+  return [dx / d * 0.5, dy / d * 0.5];
+}
+
 // ===== results: always a reward, upgrades right there, one tap to go again =====
-const simpleReward = win => Math.round(6 + G.kills * 0.22 + G.coins * 0.3 + (win ? 25 + G.stage * 6 : 0));
+// a loss ≈ 10–18 ⚙, a win ≈ 30–45 ⚙: one upgrade every one or two tries
+const simpleReward = win => Math.round(3 + G.kills * 0.05 + G.t * 0.05 + (win ? 15 + G.stage * 4 : 0));
 const _stageWinS = stageWin;
 stageWin = function () {
   if (!G.simple) return _stageWinS();
@@ -79,7 +102,7 @@ endScreen = function (won) { if (!G.simple) return _endScreenS(won); simpleResul
 function simpleResult(win) {
   if (!G.paidS) {
     G.paidS = true; G.lastCr = simpleReward(win); G.won = win;
-    spSave((S, x) => { x.credits = (x.credits || 0) + G.lastCr; if (win) S.stage = Math.max(S.stage || 0, G.stage + 1); });
+    spSave(S => { S.scrap = (S.scrap || 0) + G.lastCr; if (win) S.stage = Math.max(S.stage || 0, G.stage + 1); });
     onRunEnd(); AU.sfx(win ? 'level' : 'pick');
   }
   resultScreen(win, false);
@@ -89,7 +112,7 @@ function resultScreen(win, doubled) {
   const sub = win ? 'The guardian is down!' : G.bossOut ? 'So close — the guardian was out!' : 'The guardian comes in ' + fmt(left);
   show(`<div class="lv in" style="color:${win ? '#5cffb0' : '#ff2e63'}">STAGE ${k + 1} ${win ? 'CLEARED' : 'FAILED'}</div>
     <p class="tag in">${sub}</p>
-    <div class="gain in">+💠 <b id="sc">0</b></div>
+    <div class="gain in">+⚙ <b id="sc">0</b></div>
     ${doubled ? '' : '<button class="btn cyan in" id="dbl">▶ Double it · watch ad</button>'}
     <div id="ups" class="in"></div>
     <button class="btn in play" id="go">${win ? 'NEXT STAGE ›' : '↻ TRY AGAIN'}</button>
@@ -99,7 +122,7 @@ function resultScreen(win, doubled) {
   countUp('sc', G.lastCr * (doubled ? 2 : 1), n => n);
   upgradePanel(!win);
   const dbl = document.getElementById('dbl');
-  if (dbl) dbl.onclick = () => { AU.sfx('ui'); rewardedAd(() => { Save.bump(x => x.credits = (x.credits || 0) + G.lastCr); resultScreen(win, true); }, () => resultScreen(win, true)); };
+  if (dbl) dbl.onclick = () => { AU.sfx('ui'); rewardedAd(() => { spSave(S => S.scrap = (S.scrap || 0) + G.lastCr); resultScreen(win, true); }, () => resultScreen(win, true)); };
   document.getElementById('go').onclick = () => { AU.sfx('ui'); hide(() => playSimple(win ? k + 1 : k)); };
   document.getElementById('menu').onclick = () => { AU.sfx('ui'); titleScreen(); };
 }
@@ -110,26 +133,26 @@ function upgradePanel(nudge) {
   const p = sp(), T = SHIP_TIERS[p.tier], cap = upCap(p.tier), next = SHIP_TIERS[p.tier + 1];
   const canAny = UPS.some(u => p.up[u.id] < cap && p.crystals >= upCost(p.up[u.id]));
   const evoReady = allMaxed(p) && next;
-  el.innerHTML = `<div class="tierline"><span style="color:${T.col}">✦ ${T.name.toUpperCase()}</span> · 💠 ${p.crystals}</div>
+  el.innerHTML = `<div class="tierline"><span style="color:${T.col}">✦ ${T.name.toUpperCase()}</span> · ⚙ ${p.crystals} scrap</div>
     <div class="up3">${UPS.map(u => {
       const l = p.up[u.id], max = l >= cap, cost = upCost(l), can = !max && p.crystals >= cost, inTier = l - PER_TIER * p.tier;
       return `<button class="upb ${can ? 'can' : ''}" data-u="${u.id}" ${max ? 'disabled' : ''}><i style="color:${u.col}">${u.icon}</i><b>${u.name}</b><em>${u.val(l)}</em>
         <span class="upp">${Array.from({ length: PER_TIER }, (_, i) => `<s class="${i < inTier ? 'on' : ''}"></s>`).join('')}</span>
-        <span class="cost">${max ? 'MAX' : '💠 ' + cost}</span></button>`;
+        <span class="cost">${max ? 'MAX' : '⚙ ' + cost}</span></button>`;
     }).join('')}</div>
-    ${evoReady ? `<button class="btn evo" id="evo" ${p.crystals >= evoCost(p.tier) ? '' : 'disabled'}>✦ EVOLVE → ${next.name.toUpperCase()} · 💠 ${evoCost(p.tier)}<small>${next.perk}</small></button>`
+    ${evoReady ? `<button class="btn evo" id="evo" ${p.crystals >= evoCost(p.tier) ? '' : 'disabled'}>✦ EVOLVE → ${next.name.toUpperCase()} · ⚙ ${evoCost(p.tier)}<small>${next.perk}</small></button>`
       : next ? `<p class="hint">${nudge && canAny ? 'Upgrade, then try again!' : `Max all three to evolve into <b style="color:${next.col}">${next.name}</b>`}</p>` : '<p class="hint">Fully evolved: the Titan</p>'}`;
   el.querySelectorAll('[data-u]').forEach(b => b.onclick = () => {
     const id = b.dataset.u, q = sp(), l = q.up[id], cost = upCost(l);
     if (l >= upCap(q.tier) || q.crystals < cost) { AU.sfx('ui'); b.classList.remove('nope'); void b.offsetWidth; b.classList.add('nope'); return; }
-    spSave((S, x) => { x.credits -= cost; S.up[id] = (S.up[id] || 0) + 1; });
+    spSave(S => { S.scrap -= cost; S.up[id] = (S.up[id] || 0) + 1; });
     AU.sfx('pick'); buzz(15); upgradePanel(nudge);
     const nb = document.querySelector(`[data-u="${id}"]`); if (nb) nb.classList.add('bought');
   });
   const ev = document.getElementById('evo');
   if (ev) ev.onclick = () => {
     const q = sp(); if (!allMaxed(q) || q.crystals < evoCost(q.tier) || !SHIP_TIERS[q.tier + 1]) return;
-    spSave((S, x) => { x.credits -= evoCost(q.tier); S.tier = q.tier + 1; });
+    spSave(S => { S.scrap -= evoCost(q.tier); S.tier = q.tier + 1; });
     const N = SHIP_TIERS[q.tier + 1];
     AU.sfx('level'); AU.sfx('streak'); buzz(60); shipLook(q.tier + 1);
     if (G.state === 'title') { flash(0.5, N.col); ring(P.x, P.y, 10, 300, N.col, 40, 10); burst(P.x, P.y, N.col, 50, 7, 4); banner('EVOLVED · ' + N.name.toUpperCase(), N.col, N.perk, 170); }

@@ -129,7 +129,7 @@ function featureUpdate() {
     const c = coinDrops[i]; c.age++; c.t += 0.15;
     if (c.vx || c.vy) { c.x += c.vx; c.y += c.vy; c.vx *= 0.88; c.vy *= 0.88; if (Math.abs(c.vx) + Math.abs(c.vy) < 0.05) c.vx = c.vy = 0; }
     const dx = P.x - c.x, dy = P.y - c.y, d = Math.hypot(dx, dy) || 1;
-    if (c.age > 420 || coinDrops.length > 60 && c.age > 90) c.pull = true; // coins never pile up on screen
+    if (!c.pull && (c.age > 720 || coinDrops.length > 80 && c.age > 240)) { coinDrops.splice(i, 1); continue; } // uncollected coins fade, no free magnet
     if (c.age > 18 && (c.pull || d < P.magnet * 1.25)) { c.pull = true; c.ps = (c.ps || 0) + 0.8; const sp = Math.min(16, 3 + c.ps); c.x += dx / d * sp; c.y += dy / d * sp; }
     if (d < P.r + 8 && c.age > 10) { coinDrops.splice(i, 1); G.coins += c.v; if (AU.ok('coin', 70)) AU.tone(1650, 0.05, 'square', 0.022, 300); }
   }
@@ -154,7 +154,7 @@ function drawExtrasWorld() {
     X.fillStyle = s.c + (0.3 * s.life / s.max).toFixed(3) + ')'; X.beginPath(); X.arc(s.x, s.y, s.r, 0, TAU); X.fill();
     if (--s.life <= 0) smokes.splice(i, 1);
   }
-  for (const c of coinDrops) { const sp = Math.cos(c.t); blit(SPR.coin(), c.x, c.y + Math.sin(c.t * 0.7) * 1.5, 1, 0, Math.abs(sp) * 0.75 + 0.25, 1); }
+  for (const c of coinDrops) { if (!c.pull && c.age > 600 && (G.frame >> 3) & 1) continue; const sp = Math.cos(c.t); blit(SPR.coin(), c.x, c.y + Math.sin(c.t * 0.7) * 1.5, 1, 0, Math.abs(sp) * 0.75 + 0.25, 1); }
   // engine ribbon
   if (trail.length > 2 && G.state !== 'over') {
     const col = SPR.SHIP_THEMES[G.ship || SHIPS[0].id][1];

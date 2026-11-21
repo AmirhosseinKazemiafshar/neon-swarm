@@ -101,7 +101,7 @@ featureUpdate = function () {
     G.bossOut = true; G.nextBoss = G.t; // the boss code in update() fires next frame
     setTimeout(() => {
       const b = enemies.find(e => e.type === 'boss'); if (!b) return;
-      const big = G.stage % STAGES_PER === 9, mul = (1 + G.stage * 0.06) * (big ? 2.2 : 1) * (G.nightmare ? 1.8 : 1) * (G.simple ? 0.45 : 1);
+      const big = G.stage % STAGES_PER === 9, mul = (1 + G.stage * 0.06) * (big ? 2.2 : 1) * (G.nightmare ? 1.8 : 1) * (G.simple ? 0.8 : 1);
       b.max = Math.round(b.max * mul); b.hp = Math.round(b.hp * mul); // scale both (it used to heal a boss hit in its first frames) b.r *= big ? 1.25 : 1; b.color = GAL[G.sys].col;
       banner(big ? GAL[G.sys].boss.toUpperCase() : 'SECTOR GUARDIAN', GAL[G.sys].col, big ? 'System boss' : 'Destroy it to clear the stage', 140);
     }, 60);

@@ -494,6 +494,7 @@ function update() {
       else if (e.mode === 3) { sx *= 0.5; sy *= 0.5; if (--e.modeT <= 0) e.mode = 0; }
     }
     if (e.type === 'boss') {
+      if (typeof bossAI === 'function') { const m = bossAI(e, dx, dy, d); if (m) { sx = m[0]; sy = m[1]; } }
       e.modeT++;
       if (e.modeT % 110 === 0) { for (let k = 0; k < 14; k++) { const a = k / 14 * TAU + e.modeT * 0.01; ebullets.push({ x: e.x, y: e.y, vx: Math.cos(a) * 3.2, vy: Math.sin(a) * 3.2, life: 260 }); } AU.tone(200, 0.2, 'square', 0.04, -80); e.sq = 1; ring(e.x, e.y, e.r, e.r * 2, '#ff2e63', 16, 4); }
     }
@@ -518,7 +519,8 @@ function update() {
     const g = gems[i]; g.t += 0.1; g.age++;
     if (g.vx) { g.x += g.vx; g.y += g.vy; g.vx *= 0.88; g.vy *= 0.88; if (Math.abs(g.vx) + Math.abs(g.vy) < 0.05) g.vx = g.vy = 0; }
     const dx = P.x - g.x, dy = P.y - g.y, d = Math.hypot(dx, dy) || 1;
-    if (g.age > 600 || gems.length > 70 && g.age > 120) g.pull = true; // old gems fly to you on their own: no carpet of crystals
+    // no free magnet: gems you leave behind blink and fade after 15 s (and the oldest go first in a crowd), so the floor stays clean
+    if (!g.pull && (g.age > 900 || gems.length > 110 && g.age > 300)) { gems.splice(i, 1); continue; }
     if (g.age > 14 && (g.pull || d < P.magnet)) { g.pull = true; g.ps = (g.ps || 0) + 0.7; const s = Math.min(18, 3 + g.ps); g.x += dx / d * s; g.y += dy / d * s; }
     if (d < P.r + 8 && g.age > 8) { gems.splice(i, 1); gainXp(g.v); if (parts.length < PCAP) parts.push({ x: P.x, y: P.y, vx: 0, vy: 0, life: 10, max: 10, size: 10, color: g.v >= 5 ? '#5cffb0' : '#6fc3ff', drag: 1 }); }
   }
@@ -678,7 +680,7 @@ function draw() {
 
   // gems
   for (const g of gems) {
-    if (!vis(g.x, g.y, 20)) continue;
+    if (!vis(g.x, g.y, 20) || (!g.pull && g.age > 780 && (G.frame >> 3) & 1)) continue;
     const by = Math.sin(g.t) * 2.5, spin = Math.cos(g.t * 0.7);
     X.fillStyle = 'rgba(0,0,0,.3)'; X.beginPath(); X.ellipse(g.x, g.y + 9, 5 - by * 0.4, 2, 0, 0, TAU); X.fill();
     blit(SPR.gem(g.v >= 5 ? 1 : 0), g.x, g.y + by - 2, 0.85, 0, Math.abs(spin) * 0.7 + 0.3, 1);
