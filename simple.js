@@ -57,7 +57,8 @@ function playSimple(k) {
 }
 // fixed difficulty per stage (no "your build is strong, so enemies are too"): upgrades really make you stronger
 const _hpMulS = DIR.hpMul;
-DIR.hpMul = function () { if (G.simple && G.state !== 'title') return Math.pow(1.17, G.stage) * 0.9; return _hpMulS.call(DIR); };
+// enemy health: +15% per stage up to stage 9, then +10% per stage (upgrades grow linearly: a steeper curve became a wall at stage 17)
+DIR.hpMul = function () { if (G.simple && G.state !== 'title') { const k = G.stage; return 0.9 * Math.pow(1.15, Math.min(k, 8)) * Math.pow(1.10, Math.max(0, k - 8)); } return _hpMulS.call(DIR); };
 // once the guardian is out, the swarm thins (25%) so the fight is about the guardian, not a wall of small enemies
 const _rateMulS = DIR.rateMul;
 DIR.rateMul = function () { const r = _rateMulS.call(DIR); return G.simple && G.bossOut ? r * 0.25 : r; };
@@ -112,7 +113,7 @@ const SECRETS = {
 };
 // the very first secret (stage 3) shows its hint after 1 failed guardian fight, later ones after 2
 const hintAfter = () => G.stage === 2 ? 1 : 2;
-const secretFor = k => k < 2 ? null : ['dash', 'back', 'pylon'][(k - 2) % 3];
+const secretFor = k => k < 2 ? null : ['dash', 'back', 'pylon', 'cores', 'light'][(k - 2) % 5];
 let pylons = [];
 function placePylons() {
   pylons = []; const a0 = Math.random() * TAU;

@@ -280,7 +280,7 @@ function damage(e, dmg, kx = 0, ky = 0) {
   e.vx += kx * kb; e.vy += ky * kb;
   if (crit) onCrit(e, amount);
   // numbers only where they matter (crits, elites, bosses): a calmer screen
-  if (crit ? texts.length < 22 : (e.elite || e.type === 'boss') && texts.length < 14) text(e.x + rnd(-6, 6), e.y - e.r, crit ? amount + '!' : String(amount), crit ? '#ffe14d' : '#ffffff', crit ? 20 : 14);
+  if (crit ? texts.length < 8 : (e.elite || e.type === 'boss') && texts.length < 8) text(e.x + rnd(-6, 6), e.y - e.r, crit ? amount + '!' : String(amount), crit ? '#ffe14d' : '#ffffff', crit ? 20 : 14);
   AU.sfx('hit');
   if (e.type === 'boss' && crit) shake(2);
   if (e.hp <= 0) kill(e);
@@ -581,7 +581,7 @@ function shapePath(e, r) {
 
 function drawShip(x, y, ang, stretch, alpha = 1, ghost = false) {
   X.save(); X.translate(x, y); X.rotate(ang); X.scale(1 + stretch * 0.22, 1 - stretch * 0.15); X.globalAlpha = alpha;
-  const s = ghost ? SPR.white(SPR.ship(G.ship)) : SPR.ship(G.ship), sc = 0.82 * (G.shipScale || 1); // bigger ship after each evolution
+  const s = ghost ? SPR.white(SPR.ship(G.ship)) : (typeof shipPaint === 'function' ? shipPaint(SPR.ship(G.ship)) : SPR.ship(G.ship)), sc = 0.82 * (G.shipScale || 1); // bigger ship after each evolution
   if (!ghost) {
     const fl = 10 + Math.random() * 7 + stretch * 14;
     X.fillStyle = G.flameCol || '#ff7a2e'; X.beginPath(); X.moveTo(-12, -6); X.quadraticCurveTo(-12 - fl, 0, -12, 6); X.fill();
@@ -715,7 +715,7 @@ function draw() {
   // drop shadows (one batched path) give everything weight on the floor
   X.fillStyle = 'rgba(0,0,0,.38)'; X.beginPath();
   for (const e of enemies) {
-    if (e.spawnT > 0 || !vis(e.x, e.y, 60)) continue;
+    if (e.spawnT > 0 || e.hide || !vis(e.x, e.y, 60)) continue;
     const air = e.type === 'swarm' ? 9 : 0; X.moveTo(e.x + e.r * 0.95, e.y + e.r * 0.75 + air); X.ellipse(e.x, e.y + e.r * 0.75 + air, e.r * 0.95, e.r * 0.36, 0, 0, TAU);
   }
   X.fill();
@@ -723,7 +723,7 @@ function draw() {
   // enemies: cached sprites + walk bob + facing + squash & stretch + white hit flash
   const SCALE = { grunt: 1 / 13, swarm: 0.9 / 9, tank: 1 / 22, dasher: 0.85 / 12 };
   for (const e of enemies) {
-    if (e.spawnT > 0 || !vis(e.x, e.y, 80)) continue;
+    if (e.spawnT > 0 || e.hide || !vis(e.x, e.y, 80)) continue; // e.hide: drawn by its own code (guardian cores)
     const s = e.sq; e.walk = (e.walk || e.wob) + (e.type === 'tank' ? 0.12 : 0.22);
     if (e.type === 'boss') {
       const pulse = 1 + Math.sin(G.frame * 0.08) * 0.04, sc = e.r / 48;

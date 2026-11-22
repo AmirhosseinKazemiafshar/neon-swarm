@@ -74,7 +74,7 @@ function spawnElite() {
   const type = D() > 60 ? (Math.random() < 0.5 ? 'tank' : 'grunt') : 'grunt';
   spawn(type); const e = enemies[enemies.length - 1];
   e.elite = true; e.hp = e.max = e.hp * 9; e.r *= 1.5; e.spd *= 0.85; e.xp *= 5;
-  toast('★ An elite is coming — it carries a chest', '#ffc94d');
+  if (!G.simple) toast('★ An elite is coming — it carries a chest', '#ffc94d');
 }
 function onSupernova() { if (++WP.novaCount % 3 === 0 && P.hp < P.maxHp) { P.hp++; HUD.heartHit = -1; text(P.x, P.y - 30, '+1 HP', '#ff4d6d', 18); } }
 
@@ -224,6 +224,8 @@ function drawFeatureHud() {
   X.textAlign = 'center'; X.textBaseline = 'middle';
   // messages live in one clear lane under the top HUD: never behind buttons, never over the action at the bottom
   const lane = 10 + G.cineH * 0.9 + 198; // below the radar and the boss timer
+  // a big banner is on screen: messages wait their turn instead of drawing over it
+  if (G.banner && G.banner.life > 0) return;
   toasts.slice(-2).forEach((t, i) => {
     const k = t.life / t.max, inK = Math.min(1, (t.max - t.life) / 12), y = lane + i * 30;
     X.globalAlpha = Math.min(1, k * 3) * inK; X.font = '800 12px system-ui';

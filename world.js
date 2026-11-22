@@ -99,7 +99,7 @@ const DIR = {
     if (G.nextBoss > G.t + 1 && G.nextBoss !== Infinity) G.nextBoss = Infinity;
   },
   enter(ph) {
-    if (ph === 'build' && this.wave > 1) toast('WAVE ' + this.wave + ' · enemies grow stronger', '#8d93c4');
+    if (ph === 'build' && this.wave > 1 && !G.simple) toast('WAVE ' + this.wave + ' · enemies grow stronger', '#8d93c4');
     if (ph === 'horde') {
       if (G.mode === 'stage' && G.bossOut) return;
       const boss = G.mode === 'endless' && this.wave % 3 === 0;
