@@ -28,7 +28,7 @@ const PVK = {
   ship(g, x, y, a = 0, col = '#4fd8f0') { g.save(); g.translate(x, y); g.rotate(a); g.fillStyle = col; g.beginPath(); g.moveTo(8, 0); g.lineTo(-6, -6); g.lineTo(-3, 0); g.lineTo(-6, 6); g.closePath(); g.fill(); g.restore(); },
   foe(g, x, y, r = 6, col = '#ff4d6d', a = 1) { g.globalAlpha = a; g.fillStyle = col; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); g.fillStyle = '#0b0c1c'; g.beginPath(); g.arc(x - r * 0.3, y - r * 0.1, r * 0.18, 0, 7); g.arc(x + r * 0.3, y - r * 0.1, r * 0.18, 0, 7); g.fill(); g.globalAlpha = 1; },
   shot(g, x, y, a = 0, s = 1, col = '#e8fdff') { g.save(); g.translate(x, y); g.rotate(a); g.fillStyle = col; g.beginPath(); g.ellipse(0, 0, 4 * s, 1.6 * s, 0, 0, 7); g.fill(); g.restore(); },
-  ring(g, x, y, r, col, w = 2, a = 1) { g.globalAlpha = a; g.strokeStyle = col; g.lineWidth = w; g.beginPath(); g.arc(x, y, r, 0, 7); g.stroke(); g.globalAlpha = 1; },
+  ring(g, x, y, r, col, w = 2, a = 1) { g.globalAlpha = a; g.strokeStyle = col; g.lineWidth = w; g.beginPath(); g.arc(x, y, Math.max(0, r), 0, 7); g.stroke(); g.globalAlpha = 1; }, // never a negative radius (it threw mid-frame)
   txt(g, x, y, s, col, size = 10) { g.font = `900 ${size}px system-ui`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = col; g.fillText(s, x, y); },
   lerp: (a, b, k) => a + (b - a) * k,
 };

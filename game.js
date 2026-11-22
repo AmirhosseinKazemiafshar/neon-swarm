@@ -666,7 +666,7 @@ function draw() {
   for (let i = rings.length - 1; i >= 0; i--) {
     const r = rings[i], k = 1 - r.life / r.max, ease = 1 - Math.pow(1 - k, 3);
     X.globalAlpha = 1 - k; X.strokeStyle = r.color; X.lineWidth = r.w * (1 - k) + 0.5;
-    X.beginPath(); X.arc(r.x, r.y, r.r0 + (r.r1 - r.r0) * ease, 0, TAU); X.stroke();
+    X.beginPath(); X.arc(r.x, r.y, Math.max(0, r.r0 + (r.r1 - r.r0) * ease), 0, TAU); X.stroke();
     if (--r.life <= 0) rings.splice(i, 1);
   }
   X.globalAlpha = 1;
@@ -1244,7 +1244,13 @@ document.addEventListener('visibilitychange', () => { if (document.hidden && G.s
 
 // ---------- main loop ----------
 let lastT = performance.now(), acc = 0;
+// the frame loop can never die: not before the game is ready (scripts still loading on a slow phone),
+// and not from one bad frame (it used to stop for good on a single error = frozen/black screen)
 function loop(now) {
+  if (!P) { requestAnimationFrame(loop); return; }
+  try { loopBody(now); } catch (err) { if (!loop.errShown) { loop.errShown = true; console.error(err); } requestAnimationFrame(loop); }
+}
+function loopBody(now) {
   const dt = Math.min(100, now - lastT); lastT = now;
   let stepped = false;
   if (G.state === 'play') {
