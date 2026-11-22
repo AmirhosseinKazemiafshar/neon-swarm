@@ -121,7 +121,8 @@ drawFeatureHud = function () {
   const top = 10 + G.cineH * 0.9, left = Math.max(0, SLEN() - G.t);
   X.font = '800 10px system-ui'; X.textAlign = 'center'; X.textBaseline = 'middle';
   X.fillStyle = G.bossOut ? '#ff2e63' : '#8d93c4';
-  X.fillText(G.bossOut ? (G.stageDone ? 'STAGE CLEAR' : 'BOSS FIGHT') : 'BOSS IN ' + Math.floor(left / 60) + ':' + String(Math.floor(left % 60)).padStart(2, '0'), W / 2, top + 120);
+  const gb = G.simple && G.bossOut && enemies.find(e => e.type === 'boss' && e.enraged);
+  X.fillText(gb ? 'ESCAPES IN 0:' + String(Math.max(0, Math.ceil(120 - gb.outT / 60))).padStart(2, '0') : G.bossOut ? (G.stageDone ? 'STAGE CLEAR' : 'BOSS FIGHT') : 'BOSS IN ' + Math.floor(left / 60) + ':' + String(Math.floor(left % 60)).padStart(2, '0'), W / 2, top + 120);
   X.textAlign = 'right'; X.fillStyle = GAL[G.sys].col; X.fillText((G.nightmare ? 'NIGHTMARE ' : '') + stageLabel(G.stage), W - 12, top + 84);
 };
 // system-tinted floor for stages

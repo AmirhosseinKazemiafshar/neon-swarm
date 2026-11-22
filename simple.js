@@ -6,10 +6,10 @@
 
 const SHIP_TIERS = [
   { name: 'Scout', col: '#3cf0ff', scale: 1, flame: '#ff7a2e', give: null, perk: '' },
-  { name: 'Striker', col: '#5cffb0', scale: 1.1, flame: '#ffb02e', give: 'front', perk: 'Starts with an extra front gun' },
-  { name: 'Gunship', col: '#ffd84d', scale: 1.2, flame: '#ff5a2e', give: 'diag', perk: 'Starts with diagonal guns' },
-  { name: 'Destroyer', col: '#ff8a3c', scale: 1.3, flame: '#ff3a6a', give: 'rapid', perk: 'Starts with rapid fire' },
-  { name: 'Titan', col: '#c08bff', scale: 1.4, flame: '#b06bff', give: 'big', perk: 'Starts with heavy rounds' },
+  { name: 'Striker', col: '#5cffb0', scale: 1.1, flame: '#ffb02e', give: 'front', cards: ['side', 'crit'], perk: 'Extra front gun · new cards: Side Guns, Eagle Eye' },
+  { name: 'Gunship', col: '#ffd84d', scale: 1.2, flame: '#ff5a2e', give: 'diag', cards: ['pierce', 'ricochet'], perk: 'Diagonal guns · new cards: Piercing, Ricochet' },
+  { name: 'Destroyer', col: '#ff8a3c', scale: 1.3, flame: '#ff3a6a', give: 'rapid', cards: ['poison', 'split'], perk: 'Rapid fire · new cards: Toxic, Split Shot' },
+  { name: 'Titan', col: '#c08bff', scale: 1.4, flame: '#b06bff', give: 'big', cards: ['homing'], perk: 'Heavy rounds · new card: Homing · no upgrade cap' },
 ];
 const UPS = [
   { id: 'dmg', icon: '⚔', name: 'Damage', col: '#ff4d6d', val: l => `+${l * 12}%` },
@@ -17,7 +17,7 @@ const UPS = [
   { id: 'rate', icon: '⚡', name: 'Fire rate', col: '#ffd84d', val: l => `+${l * 8}%` },
 ];
 const PER_TIER = 3;
-const upCap = t => PER_TIER * (t + 1);
+const upCap = t => t >= SHIP_TIERS.length - 1 ? 99 : PER_TIER * (t + 1);
 // scrap (⚙) is its own currency: old galaxy crystals and mission rewards can't buy these, so every upgrade is earned here
 const upCost = l => 20 + l * 15;
 const evoCost = t => 100 + t * 80;
@@ -34,11 +34,14 @@ let SIMPLE_NEXT = false;
 const _onNewRunS = onNewRun;
 onNewRun = function () {
   _onNewRunS();
-  G.simple = SIMPLE_NEXT; G.paidS = false; scr.classList.remove('solid'); pylons = []; G.pylonAt = 0;
+  G.simple = SIMPLE_NEXT; G.paidS = false; G.escaped = false; scr.classList.remove('solid'); pylons = []; G.pylonAt = 0;
   if (!G.simple) { G.stageLen = 0; G.shipScale = 1; G.flameCol = null; return; }
   const p = sp();
   // only the 7 base cards and the hero skills: no research, no fragments
-  for (let i = UPGRADES.length - 1; i >= 0; i--) { const u = UPGRADES[i]; if (!u.skill && !BASE_CARDS.includes(u.id)) UPGRADES.splice(i, 1); }
+  // card pool = 7 base cards + the cards each ship evolution unlocks (no Lab research needed here)
+  const allowed = new Set(BASE_CARDS); for (let t = 1; t <= p.tier; t++) (SHIP_TIERS[t].cards || []).forEach(id => allowed.add(id));
+  for (let i = UPGRADES.length - 1; i >= 0; i--) if (!UPGRADES[i].skill) UPGRADES.splice(i, 1);
+  for (const c of CARDS) if (allowed.has(c.id)) { UPGRADES.push(c); LV[c.id] = 0; }
   P.might += p.up.dmg * 0.12;
   P.maxHp += p.up.hp; P.hp = P.maxHp; G.hpCap = Math.max(8, P.maxHp);
   P.haste /= 1 + p.up.rate * 0.08;
@@ -71,16 +74,21 @@ onKill = function (e) {
 // (the old Hive Core drifted at 0.8 speed and could simply be outrun)
 function bossAI(e, dx, dy, d) {
   if (!G.simple) return null;
-  const k = G.stage, chase = Math.min(2.6, 1.7 + k * 0.08);
+  const k = G.stage, chase = Math.min(2.6, 1.7 + k * 0.08) * (e.enraged ? 1.35 : 1);
   if (!e.ai) secretInit(e);
   const A = e.ai; A.t--;
+  // a guardian fight never drags on forever: after 80 s it enrages (faster, more shots) and the fight ends one way or the other
+  e.outT = (e.outT || 0) + 1;
+  if (e.outT === 75 * 60) { e.enraged = true; banner('ENRAGED', '#ff2e63', 'It escapes in 45 s!', 140); flash(0.3, '#ff2e63'); AU.sfx('warn'); }
+  if (e.outT >= 120 * 60 && G.state === 'play') { G.escaped = true; banner('IT ESCAPED', '#ff2e63', 'Find its weakness next time', 160); P.hp = 0; gameOver(); return [0, 0]; }
+  if (e.enraged && e.outT % 50 === 0) { for (let i = 0; i < 12; i++) { const a = i / 12 * TAU + e.outT * 0.02; ebullets.push({ x: e.x, y: e.y, vx: Math.cos(a) * 3.8, vy: Math.sin(a) * 3.8, life: 220 }); } }
   if (e.exposedT > 0) e.exposedT--;
   if (e.stunT > 0) { e.stunT--; e.sq = 0.3 + Math.sin(G.frame * 0.5) * 0.2; return [0, 0]; }
   // secret 1: dash straight through the shield to shatter it
   if (e.secret === 'dash' && e.exposedT <= 0 && P.dashT > 0 && d < e.r + P.r + 16 && G.frame > (e.brkLock || 0)) { e.brkLock = G.frame + 30; expose(e, 240, 70, 'SHIELD BROKEN!'); return [0, 0]; }
   if (A.m === 'chase') {
     // it turns toward you (not instantly), so its back is open right after a charge
-    let df = Math.atan2(dy, dx) - e.face; df = Math.atan2(Math.sin(df), Math.cos(df)); e.face += clamp(df, -0.035, 0.035);
+    let df = Math.atan2(dy, dx) - e.face; df = Math.atan2(Math.sin(df), Math.cos(df)); e.face += clamp(df, e.secret === 'back' ? -0.022 : -0.035, e.secret === 'back' ? 0.022 : 0.035);
     if (A.t <= 0 && d < 520) { A.m = 'wind'; A.t = 42; A.ang = Math.atan2(dy, dx); e.face = A.ang; AU.tone(160, 0.5, 'sawtooth', 0.05, 260); ring(e.x, e.y, e.r * 2.4, e.r, '#ff2e63', 40, 4); }
     return [dx / d * chase, dy / d * chase];
   }
@@ -88,11 +96,11 @@ function bossAI(e, dx, dy, d) {
   if (A.m === 'charge') {
     if (G.frame % 2 === 0) ghosts.push({ x: e.x, y: e.y, ang: A.ang, life: 12, enemy: e.color, r: e.r });
     // secret 3: a charge into a pylon stuns it
-    for (let i = pylons.length - 1; i >= 0; i--) { const p = pylons[i]; if ((p.x - e.x) ** 2 + (p.y - e.y) ** 2 < (e.r + p.r) ** 2) { pylons.splice(i, 1); explode(p.x, p.y, 70, '#ff6bd5'); expose(e, 300, 120, 'CRASHED!'); if (!pylons.length) G.pylonAt = G.t + 3; return [0, 0]; } }
-    if (A.t <= 0) { A.m = 'rest'; A.t = e.secret === 'back' ? 100 : 40; }
+    for (let i = pylons.length - 1; i >= 0; i--) { const p = pylons[i]; if ((p.x - e.x) ** 2 + (p.y - e.y) ** 2 < (e.r + p.r) ** 2) { pylons.splice(i, 1); explode(p.x, p.y, 70, '#ff6bd5'); expose(e, 420, 120, 'CRASHED!'); if (!pylons.length) G.pylonAt = G.t + 3; return [0, 0]; } }
+    if (A.t <= 0) { A.m = 'rest'; A.t = e.secret === 'back' ? 150 : 40; }
     return [Math.cos(A.ang) * (9 + k * 0.3), Math.sin(A.ang) * (9 + k * 0.3)];
   }
-  if (A.t <= 0) { A.m = 'chase'; A.t = Math.max(120, 220 - k * 12); } // rest: a short window to punish it
+  if (A.t <= 0) { A.m = 'chase'; A.t = e.enraged ? 80 : Math.max(120, 220 - k * 12); } // rest: a short window to punish it
   return [dx / d * 0.5, dy / d * 0.5];
 }
 
@@ -102,6 +110,8 @@ const SECRETS = {
   back: { name: 'ARMORED GUARDIAN', col: '#ffd84d', clue: 'Armored in front: after it charges past you, shoot its glowing back' },
   pylon: { name: 'UNSTOPPABLE GUARDIAN', col: '#ff6bd5', clue: 'Hide behind a pylon so its charge crashes into it' },
 };
+// the very first secret (stage 3) shows its hint after 1 failed guardian fight, later ones after 2
+const hintAfter = () => G.stage === 2 ? 1 : 2;
 const secretFor = k => k < 2 ? null : ['dash', 'back', 'pylon'][(k - 2) % 3];
 let pylons = [];
 function placePylons() {
@@ -114,7 +124,7 @@ function secretInit(e) {
   e.secret = secretFor(G.stage); if (!e.secret) return;
   const S = SECRETS[e.secret], q = Save.get().simple || {}, fails = (q.fails || {})[G.stage] || 0, known = (q.found || {})[e.secret];
   if (e.secret === 'pylon') placePylons();
-  setTimeout(() => banner(S.name, S.col, known || fails >= 2 ? '💡 ' + S.clue : 'Bullets bounce off · find its weakness', 220), 900);
+  setTimeout(() => banner(S.name, S.col, known || fails >= hintAfter() ? '💡 ' + S.clue : 'Bullets bounce off · find its weakness', 220), 900);
 }
 function expose(e, t, stun, label) {
   e.exposedT = t; e.stunT = stun; e.ai.m = 'rest'; e.ai.t = stun + 30;
@@ -128,7 +138,7 @@ const _damageS = damage;
 damage = function (e, dmg, kx = 0, ky = 0) {
   if (G.simple && e.type === 'boss' && e.secret && e.exposedT <= 0) {
     let open = false;
-    if (e.secret === 'back') { const l = Math.hypot(kx, ky); open = l > 0 && (kx * Math.cos(e.face) + ky * Math.sin(e.face)) / l > 0.25; }
+    if (e.secret === 'back') { const l = Math.hypot(kx, ky); open = l > 0 && (kx * Math.cos(e.face) + ky * Math.sin(e.face)) / l > -0.35; } // only the front ~140° is armored: sides and back count
     if (!open) {
       if (G.frame - (e.blockFx || 0) > 6) { e.blockFx = G.frame; burst(e.x + rnd(-e.r, e.r) * 0.6, e.y + rnd(-e.r, e.r) * 0.6, '#cfefff', 3, 3, 2, 12); if (AU.ok('block', 150)) AU.tone(2300, 0.03, 'triangle', 0.018, -700); }
       if (G.frame - (e.blockTxt || -999) > 150) { e.blockTxt = G.frame; text(e.x, e.y - e.r - 14, 'BLOCKED', '#cfefff', 13); }
@@ -137,7 +147,7 @@ damage = function (e, dmg, kx = 0, ky = 0) {
   }
   // weak-spot hits (exposed, or the glowing back) hit 1.5× / 1.8× harder
   const weak = e.secret === 'back' && e.exposedT <= 0;
-  return _damageS(e, e.exposedT > 0 ? dmg * 1.5 : weak ? dmg * 1.8 : dmg, kx, ky);
+  return _damageS(e, e.exposedT > 0 ? dmg * 1.5 : weak ? dmg * 1.4 : dmg, kx, ky);
 };
 // pylons come back if they were all used up
 const _featureUpdateS = featureUpdate;
@@ -158,7 +168,7 @@ drawExtrasWorld = function () {
     if (!e.secret) continue;
     if (e.exposedT > 0) { if ((G.frame >> 2) & 1) { X.strokeStyle = '#ff4d6d'; X.lineWidth = 3; X.setLineDash([8, 8]); X.beginPath(); X.arc(e.x, e.y, e.r + 10, 0, TAU); X.stroke(); X.setLineDash([]); } continue; }
     if (e.secret === 'back') {
-      X.strokeStyle = '#ffd84d'; X.lineWidth = 9; X.lineCap = 'round'; X.beginPath(); X.arc(e.x, e.y, e.r + 8, e.face - 1.5, e.face + 1.5); X.stroke();
+      X.strokeStyle = '#ffd84d'; X.lineWidth = 9; X.lineCap = 'round'; X.beginPath(); X.arc(e.x, e.y, e.r + 8, e.face - 1.2, e.face + 1.2); X.stroke();
       const bx = e.x - Math.cos(e.face) * (e.r + 2), by = e.y - Math.sin(e.face) * (e.r + 2);
       glow(bx, by, 34 + Math.sin(G.frame * 0.2) * 6, '#ff4d6d', 0.8); X.globalAlpha = 1; X.globalCompositeOperation = 'source-over';
       X.fillStyle = '#ffe0e6'; X.beginPath(); X.arc(bx, by, 7, 0, TAU); X.fill();
@@ -193,12 +203,12 @@ function simpleResult(win) {
 function secretHint(win) {
   const sec = secretFor(G.stage); if (win || !sec || !G.bossOut) return '';
   const q = Save.get().simple || {}, fails = (q.fails || {})[G.stage] || 0, known = (q.found || {})[sec];
-  if (known || fails >= 2) return `<p class="clue in">💡 ${SECRETS[sec].clue}</p>`;
+  if (known || fails >= hintAfter()) return `<p class="clue in">💡 ${SECRETS[sec].clue}</p>`;
   return `<p class="clue in">🔒 This guardian has a weakness. Watch it closely…</p>`;
 }
 function resultScreen(win, doubled) {
   const k = G.stage, left = Math.max(0, G.stageLen - G.t);
-  const sub = win ? 'The guardian is down!' : G.bossOut ? 'So close — the guardian was out!' : 'The guardian comes in ' + fmt(left);
+  const sub = win ? 'The guardian is down!' : G.escaped ? 'The guardian escaped — find its weakness!' : G.bossOut ? 'So close — the guardian was out!' : 'The guardian comes in ' + fmt(left);
   show(`<div class="lv in" style="color:${win ? '#5cffb0' : '#ff2e63'}">STAGE ${k + 1} ${win ? 'CLEARED' : 'FAILED'}</div>
     <p class="tag in">${sub}</p>
     <div class="gain in">+⚙ <b id="sc">0</b></div>
@@ -225,7 +235,7 @@ function upgradePanel(nudge) {
   const evoReady = allMaxed(p) && next;
   el.innerHTML = `<div class="tierline"><span style="color:${T.col}">✦ ${T.name.toUpperCase()}</span> · ⚙ ${p.crystals} scrap</div>
     <div class="up3">${UPS.map(u => {
-      const l = p.up[u.id], max = l >= cap, cost = upCost(l), can = !max && p.crystals >= cost, inTier = l - PER_TIER * p.tier;
+      const l = p.up[u.id], max = l >= cap, cost = upCost(l), can = !max && p.crystals >= cost, inTier = Math.min(PER_TIER, l - PER_TIER * p.tier);
       return `<button class="upb ${can ? 'can' : ''}" data-u="${u.id}" ${max ? 'disabled' : ''}><i style="color:${u.col}">${u.icon}</i><b>${u.name}</b><em>${u.val(l)}</em>
         <span class="upp">${Array.from({ length: PER_TIER }, (_, i) => `<s class="${i < inTier ? 'on' : ''}"></s>`).join('')}</span>
         <span class="cost">${max ? 'MAX' : '⚙ ' + cost}</span></button>`;

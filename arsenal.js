@@ -202,7 +202,9 @@ levelUpScreen = function () {
   if (fresh[0] && pick.length < 3) pick.push(fresh[0]);
   for (const c of mix([...owned.slice(1), ...fresh.slice(1)])) { if (pick.length >= 3) break; pick.push(c); }
   if (pick.length < 3 && skills[1]) pick.push(skills[1]);
-  if (!pick.length) pick.push({ id: 'heal', icon: '✚', col: '#5cffb0', name: 'Repair', max: 99, desc: () => 'Restore all HP' });
+  // every card maxed: never a lonely 'Repair' screen — Overcharge (+10% damage, repeatable), plus Repair when hurt
+  if (pick.length < 3) pick.push({ id: 'over', icon: '✦', col: '#ffd84d', name: 'Overcharge', max: 99, desc: () => '+10% damage for this run' });
+  if (pick.length < 3 && P.hp < P.maxHp) pick.push({ id: 'heal', icon: '✚', col: '#5cffb0', name: 'Repair', max: 99, desc: () => 'Restore all HP' });
   show(`<div class="lv in">LEVEL ${G.level}</div><div class="h2 in">Choose one</div>${setsBar()}` +
     pick.map((u, i) => {
       const lv = u.ult ? G.ult + 1 : (LV[u.id] || 0) + 1, cls = u.ult ? 'r-legend' : u.skill ? 'r-epic' : 'r-rare';
@@ -215,7 +217,7 @@ levelUpScreen = function () {
     if (chosen) return; chosen = true;
     const u = pick[+b.dataset.i]; AU.sfx('pick'); buzz(20);
     b.classList.add('chosen'); box.querySelectorAll('.card,.h2,.lv').forEach(c => { if (c !== b) c.classList.add('fade'); });
-    if (u.ult) G.ult++; else if (u.id === 'heal') P.hp = P.maxHp; else applyUpgrade(u);
+    if (u.ult) G.ult++; else if (u.id === 'heal') P.hp = P.maxHp; else if (u.id === 'over') P.might += 0.1; else applyUpgrade(u);
     resume(() => {
       G.state = 'play'; setPlayUi(true); P.inv = Math.max(P.inv, 45);
       text(P.x, P.y - 34, u.name.toUpperCase(), u.col, 20); ring(P.x, P.y, 10, 120, u.col, 26, 5); burst(P.x, P.y, u.col, 26, 5, 3); flash(0.15, u.col);
