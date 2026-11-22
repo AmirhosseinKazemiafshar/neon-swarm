@@ -251,10 +251,12 @@ function openChest(auto) {
   else {
     const n = 1 + (Math.random() < 0.4) + (Math.random() < 0.15);
     for (let i = 0; i < n; i++) {
-      const av = UPGRADES.filter(u => u.id !== 'blaster' && LV[u.id] + rewards.filter(r => r.u === u).length < u.max);
+      // every reward is a different card; hero skills respect the same cap as the level-up screen
+      const cap = typeof skillCap === 'function' ? skillCap() : 99;
+      const av = UPGRADES.filter(u => u.id !== 'blaster' && LV[u.id] < u.max && !rewards.some(r => r.u === u) && !(u.skill && (LV[u.id] >= cap || LV[u.id] >= Math.ceil(G.level / 2))));
       if (!av.length) break; const u = av[Math.floor(Math.random() * av.length)];
-      const lv = LV[u.id] + rewards.filter(r => r.u === u).length;
-      rewards.push({ kind: 'up', u, icon: u.icon, col: u.col, name: u.name, desc: 'Lv ' + lv + ' → ' + (lv + 1) });
+      const lv = LV[u.id];
+      rewards.push({ kind: 'up', u, icon: u.icon, col: u.col, name: u.name, desc: lv === 0 ? 'NEW' : 'Lv ' + lv + ' → ' + (lv + 1) });
     }
   }
   if (!rewards.length) rewards.push({ kind: 'power', icon: '✦', col: '#ffe14d', name: 'Power Core', desc: '+1 gun power' });

@@ -46,7 +46,8 @@ onNewRun = function () {
   shipLook(p.tier);
 };
 function playSimple(k) {
-  SIMPLE_NEXT = true; startStage(k, { mods: [MODS[0]] }); SIMPLE_NEXT = false;
+  // the map art has 60 stages: past that it loops the look, the difficulty keeps rising
+  SIMPLE_NEXT = true; startStage(k % STAGE_TOTAL, { mods: [MODS[0]] }); SIMPLE_NEXT = false; G.stage = k;
   G.diffBase = 20 + k * 12; G.stageLen = Math.min(150, 75 + k * 8);
   const T = SHIP_TIERS[sp().tier];
   banner('STAGE ' + (k + 1), T.col, 'Survive · beat the guardian', 130);
@@ -62,6 +63,7 @@ stageLabel = k => G.simple ? String(k + 1) : _stageLabelS(k);
 const _onKillS = onKill;
 onKill = function (e) {
   _onKillS(e);
+  if (G.simple && e.type === 'boss') { P.inv = 9999; enemies.forEach(o => { if (o !== e && !o.dead && o.type !== 'boss') { o.dead = true; burst(o.x, o.y, o.color, 6, 4); } }); ebullets = []; } // the win can't be lost in the last second
   if (G.simple) for (let i = items.length - 1; i >= 0; i--) if (items[i].kind === 'frag') items.splice(i, 1);
 };
 
@@ -139,7 +141,7 @@ damage = function (e, dmg, kx = 0, ky = 0) {
 };
 // pylons come back if they were all used up
 const _featureUpdateS = featureUpdate;
-featureUpdate = function () { _featureUpdateS(); if (G.simple && G.pylonAt && G.t >= G.pylonAt) { G.pylonAt = 0; if (enemies.some(e => e.type === 'boss' && !e.dead)) placePylons(); } };
+featureUpdate = function () { _featureUpdateS(); if (G.mode === 'stage' && G.bossOut && G.nextBoss !== Infinity && enemies.some(e => e.type === 'boss')) G.nextBoss = Infinity; /* one guardian per stage, never a second one after 2 min */ if (G.simple && G.pylonAt && G.t >= G.pylonAt) { G.pylonAt = 0; if (enemies.some(e => e.type === 'boss' && !e.dead)) placePylons(); } };
 // drawing: shield bubble, armored front + glowing back, wind-up aim line, pylons
 const _drawExtrasS = drawExtrasWorld;
 drawExtrasWorld = function () {

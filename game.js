@@ -207,7 +207,7 @@ function newRun(mode = 'endless') {
   resetField();
   LV = { blaster: 1, orbit: 0, chain: 0, nova: 0, might: 0, haste: 0, speed: 0, magnet: 0, heart: 0 };
   WP = { blasterCd: 0, burst: 0, orbitAng: 0, chainCd: 60, novaCd: 120 };
-  Object.assign(G, { t: 0, frame: 0, kills: 0, level: 1, xp: 0, xpNeed: 6, combo: 0, comboT: 0, bestCombo: 0, streakIdx: 0, shake: 0, hitStop: 0, slow: 0, revived: false, nextBoss: 120, nextWave: 45, banner: null, spawnAcc: 0, cine: 0, cineH: 0, flash: 0, flashCol: '#fff', deathT: 0,
+  Object.assign(G, { t: 0, frame: 0, kills: 0, level: 1, xp: 0, xpNeed: 6, combo: 0, comboT: 0, bestCombo: 0, streakIdx: 0, shake: 0, hitStop: 0, slow: 0, pendingLv: 0, revived: false, nextBoss: 120, nextWave: 45, banner: null, spawnAcc: 0, cine: 0, cineH: 0, flash: 0, flashCol: '#fff', deathT: 0,
     mode, score: 0, coins: 0, relics: [], sys: 0, step: 0, node: null, stageDur: Infinity, diffBase: 0, clearAt: 0, totalT: 0, saved: false, banked: 0, rerolls: 2, tier: 0, power: 0, nextCore: Infinity });
   applyMeta();
   onNewRun();
@@ -559,7 +559,8 @@ function hurt(dmg, sx, sy) {
 function gainXp(v) {
   G.xp += v * P.xpMul; AU.sfx('gem');
   if (G.xp >= G.xpNeed) {
-    G.xp -= G.xpNeed; G.level++; G.xpNeed = Math.floor(G.xpNeed * 1.33 + 6); // fewer, more meaningful level-ups HUD.levelPop = 1;
+    G.xp -= G.xpNeed; G.level++; G.xpNeed = Math.floor(G.xpNeed * 1.33 + 6); HUD.levelPop = 1; // fewer, more meaningful level-ups
+    G.pendingLv = (G.pendingLv || 0) + 1; // two levels at once = two card screens, none lost
     AU.sfx('level'); buzz(50); ring(P.x, P.y, 10, 170, '#ffe14d', 30, 7); ring(P.x, P.y, 10, 120, '#ffffff', 20, 3); burst(P.x, P.y, '#ffe14d', 34, 6, 3);
     flash(0.3, '#ffe14d'); punch(0.08);
     G.slow = 1; // open the level-up on the next frame (the old slow-motion read as lag)
@@ -1253,7 +1254,7 @@ function loop(now) {
       let steps = 0; // never run more than 3 simulation steps per frame: a slow frame must not snowball
       while (acc >= 1000 / 60 && steps++ < 3) { acc -= 1000 / 60; update(); updateCamera(); stepped = true; if (G.state !== 'play') break; }
       if (steps >= 3) acc = 0;
-      if (G.state === 'play' && G.slow > 0 && --G.slow === 0) levelUpScreen();
+      if (G.state === 'play' && (G.slow > 0 ? --G.slow === 0 : G.pendingLv > 0)) { G.pendingLv = Math.max(0, (G.pendingLv || 0) - 1); levelUpScreen(); }
     }
     // 120 Hz screens: nothing moved this frame, so don't redraw a half-updated scene (that was the micro-stutter)
     if (!stepped && G.state === 'play') { requestAnimationFrame(loop); return; }
