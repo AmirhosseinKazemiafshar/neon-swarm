@@ -377,32 +377,35 @@ ultBtn.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagat
 addEventListener('keydown', e => { if ((e.key === 'e' || e.key === 'E') && !(e.target && e.target.tagName === 'INPUT')) castUlt(); });
 function ultUi(on) { ultBtn.style.display = on ? 'block' : 'none'; }
 let ultLast = '';
-function drawHeroBadge(lx, ly) {
+function drawHeroBadge(lx, ly, g = X) {
   if (!G.hero) return 0;
   const H = hero();
   // badge sized to its label (no text touching the border), Ultimate rank pips centred underneath
   const label = H.icon + ' ' + (G.shield > 0 ? '⛨ ' + G.shield : H.name.toUpperCase().slice(0, 5));
-  X.font = '800 10px system-ui'; const bw = Math.ceil(X.measureText(label).width) + 18;
-  X.fillStyle = 'rgba(18,21,42,.88)'; X.beginPath(); X.roundRect(lx + 0.5, ly + 0.5, bw, 26, 8); X.fill();
-  X.strokeStyle = H.col; X.lineWidth = 1.5; X.stroke();
-  X.textAlign = 'center'; X.textBaseline = 'middle'; X.fillStyle = H.col; X.fillText(label, lx + 0.5 + bw / 2, ly + 14);
+  g.font = '800 10px system-ui'; const bw = Math.ceil(g.measureText(label).width) + 18;
+  g.fillStyle = 'rgba(18,21,42,.88)'; g.beginPath(); g.roundRect(lx + 0.5, ly + 0.5, bw, 26, 8); g.fill();
+  g.strokeStyle = H.col; g.lineWidth = 1.5; g.stroke();
+  g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = H.col; g.fillText(label, lx + 0.5 + bw / 2, ly + 14);
   const pw = 7, pg = 3, px0 = lx + 0.5 + bw / 2 - (3 * pw + 2 * pg) / 2;
-  for (let k = 0; k < 3; k++) { X.fillStyle = k < G.ult ? '#ff2e63' : 'rgba(255,255,255,.16)'; X.beginPath(); X.roundRect(px0 + k * (pw + pg), ly + 30, pw, 3, 1.5); X.fill(); }
+  for (let k = 0; k < 3; k++) { g.fillStyle = k < G.ult ? '#ff2e63' : 'rgba(255,255,255,.16)'; g.beginPath(); g.roundRect(px0 + k * (pw + pg), ly + 30, pw, 3, 1.5); g.fill(); }
   HUD.badgeW = bw;
   // item slots + held fragment, bottom-left
   const by = H_screenBottom();
   for (let k = 0; k < 3; k++) {
     const id = G.items[k], it = id && Object.values(ITEMS).find(x => x.id === id), x = 12 + k * 34;
-    X.fillStyle = 'rgba(18,21,42,.8)'; X.beginPath(); X.roundRect(x, by, 30, 30, 8); X.fill();
-    X.strokeStyle = it ? it.col : 'rgba(255,255,255,.12)'; X.lineWidth = 1.5; X.stroke();
-    if (it) { X.font = '15px system-ui'; X.fillStyle = it.col; X.fillText(it.icon, x + 15, by + 16); }
+    g.fillStyle = 'rgba(18,21,42,.8)'; g.beginPath(); g.roundRect(x, by, 30, 30, 8); g.fill();
+    g.strokeStyle = it ? it.col : 'rgba(255,255,255,.12)'; g.lineWidth = 1.5; g.stroke();
+    if (it) { g.font = '15px system-ui'; g.fillStyle = it.col; g.fillText(it.icon, x + 15, by + 16); }
   }
-  if (G.heldFrag) { const f = FRAG[G.heldFrag]; X.fillStyle = f.col; X.beginPath(); X.moveTo(120, by + 5); X.lineTo(128, by + 15); X.lineTo(120, by + 25); X.lineTo(112, by + 15); X.closePath(); X.fill(); X.strokeStyle = SPR.OUT; X.lineWidth = 2; X.stroke(); }
-  // ultimate button state
+  if (G.heldFrag) { const f = FRAG[G.heldFrag]; g.fillStyle = f.col; g.beginPath(); g.moveTo(120, by + 5); g.lineTo(128, by + 15); g.lineTo(120, by + 25); g.lineTo(112, by + 15); g.closePath(); g.fill(); g.strokeStyle = SPR.OUT; g.lineWidth = 2; g.stroke(); }
+  return (HUD.badgeW || 56) + 6;
+}
+// the Ultimate button (DOM) is synced every frame, even when the badge comes from the HUD cache
+function syncUltBtn() {
+  if (!G.hero) return; const H = hero();
   const pct = G.ult ? Math.round(G.ultCharge * 100) : 0, st = G.ult ? (G.ultActive > 0 ? 'ON' : pct >= 100 ? 'READY' : pct + '%') : 'LV 6';
   const key = pct + st + G.ult;
   if (key !== ultLast) { ultLast = key; ultBtn.style.setProperty('--p', pct + '%'); ultBtn.style.setProperty('--uc', H.col); ultBtn.classList.toggle('ready', G.ult > 0 && pct >= 100); ultBtn.innerHTML = `<span>${H.ult.icon}<small>${st}</small></span>`; }
-  return (HUD.badgeW || 56) + 6;
 }
 const H_screenBottom = () => H - 46 - G.cineH;
 

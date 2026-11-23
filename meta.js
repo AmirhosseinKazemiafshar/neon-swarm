@@ -156,3 +156,18 @@ titleScreen = function () {
     d.onclick = () => { AU.init(); AU.sfx('ui'); dailyScreen(); }; more.after(d);
   }
 };
+
+// ===== Endless speaks the same language as the main path =====
+// it used to pay "credits for the Hangar" (no longer reachable) and show old missions / craft fragments
+const _endScreenM = endScreen;
+endScreen = function (won) {
+  _endScreenM(won);
+  if (G.simple || G.mode !== 'endless') return;
+  if (!G.endPaid) { G.endPaid = true; G.endScrap = Math.min(120, Math.round(G.kills * 0.02 + G.t * 0.05)); spSave(S => S.scrap = (S.scrap || 0) + G.endScrap); }
+  const cr = box.querySelector('.credits'); if (cr) cr.innerHTML = `+⚙ ${G.endScrap} scrap <span>· ${sp().crystals} to spend on upgrades</span>`;
+  box.querySelectorAll('.mres').forEach(el => el.remove());
+};
+const _onKillM = onKill;
+onKill = function (e) { _onKillM(e); if (G.mode === 'endless') for (let i = items.length - 1; i >= 0; i--) if (items[i].kind === 'frag') items.splice(i, 1); };
+const _onNewRunM2 = onNewRun;
+onNewRun = function () { _onNewRunM2(); G.missionsDone = null; G.endPaid = false; }; // the old credit missions are off everywhere

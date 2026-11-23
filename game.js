@@ -857,6 +857,42 @@ function draw() {
   }
 }
 
+// ---------- HUD cache: the bottom-left loadout is drawn into a small image and reused until something in it changes ----------
+const LOADOUT = { c: document.createElement('canvas'), key: '' };
+function drawLoadoutCached() {
+  if (typeof syncUltBtn === 'function') syncUltBtn();
+  const ly = H - 46 - G.cineH - 40, y0 = Math.floor(ly - 3 * 38 - 6), hh = Math.ceil(H - y0);
+  let key = W + '|' + H + '|' + DPR + '|' + G.cineH + '|' + (G.hero || '') + '|' + G.ult + '|' + G.shield + '|' + (G.items || []).join() + '|' + (G.heldFrag || '');
+  for (const u of UPGRADES) if (LV[u.id] > 0) key += u.id + LV[u.id];
+  const c = LOADOUT.c;
+  if (key !== LOADOUT.key) {
+    LOADOUT.key = key;
+    c.width = Math.ceil(W * DPR); c.height = Math.ceil(hh * DPR);
+    const g = c.getContext('2d'); g.setTransform(DPR, 0, 0, DPR, 0, -y0 * DPR); g.clearRect(0, y0, W, hh);
+    drawLoadout(g);
+  }
+  X.drawImage(c, 0, y0, W, hh);
+}
+function drawLoadout(g) {
+  {
+    const owned = UPGRADES.filter(u => u.id !== 'blaster' && LV[u.id] > 0); let lx = 12; const ly = H - 46 - G.cineH - 40; // bottom-left, above the item slots: keeps the top of the screen clear
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    lx += drawHeroBadge(lx, ly, g);
+    // one tidy grid: 26 px tiles, 4 px gaps, level pips centred under each tile, wraps before the score column
+    const x0 = 12, maxX = W - 104; let row = 0; // stop before the Dash / Ultimate buttons
+    for (const u of owned) {
+      if (lx + 26 > maxX) { row++; lx = x0; }
+      const ty = ly - row * 38; // extra rows stack upward
+      g.fillStyle = 'rgba(18,21,42,.85)'; g.beginPath(); g.roundRect(lx + 0.5, ty + 0.5, 26, 26, 7); g.fill();
+      g.strokeStyle = u.col + 'aa'; g.lineWidth = 1.5; g.stroke();
+      g.font = '700 13px system-ui'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = u.col; g.fillText(u.icon, lx + 13.5, ty + 14);
+      const pw = Math.min(5, (24 - (u.max - 1) * 2) / u.max), tot = u.max * pw + (u.max - 1) * 2, p0 = lx + 13.5 - tot / 2;
+      for (let k = 0; k < u.max; k++) { g.fillStyle = k < LV[u.id] ? '#ffc94d' : 'rgba(255,255,255,.16)'; g.fillRect(p0 + k * (pw + 2), ty + 30, pw, 3); }
+      lx += 30;
+    }
+  }
+}
+
 function drawHud(boss) {
   const top = 10 + G.cineH * 0.9;
   HUD.xp = lerp(HUD.xp, clamp(G.xp / G.xpNeed, 0, 1), 0.15);
@@ -864,12 +900,17 @@ function drawHud(boss) {
   // xp bar
   const bh = 6 + HUD.levelPop * 6;
   X.fillStyle = 'rgba(255,255,255,.08)'; X.fillRect(0, G.cineH, W, bh);
-  const xg = X.createLinearGradient(0, 0, W, 0); xg.addColorStop(0, '#3c9bff'); xg.addColorStop(1, HUD.levelPop > 0.1 ? '#ffe14d' : '#3cf0ff');
+  const xk = W + (HUD.levelPop > 0.1 ? 'y' : 'c'); if (HUD.xgK !== xk) { HUD.xgK = xk; HUD.xg = X.createLinearGradient(0, 0, W, 0); HUD.xg.addColorStop(0, '#3c9bff'); HUD.xg.addColorStop(1, HUD.levelPop > 0.1 ? '#ffe14d' : '#3cf0ff'); } const xg = HUD.xg;
   X.fillStyle = xg; X.fillRect(0, G.cineH, W * HUD.xp, bh);
   if (HUD.xp > 0.02) { X.globalCompositeOperation = 'lighter'; glow(W * HUD.xp, G.cineH + bh / 2, 14, '#3cf0ff', 0.9); X.globalCompositeOperation = 'source-over'; X.globalAlpha = 1; }
   // hearts
   X.textAlign = 'center'; X.textBaseline = 'middle';
-  for (let i = 0; i < P.maxHp; i++) {
+  if (P.maxHp > 9) {
+    // lots of hull: one big heart + "14 / 20" (20 hearts ran across the timer and the pause button)
+    const jx = HUD.heartHit > 0.05 ? rnd(-3, 3) * HUD.heartHit : 0, s = 22 * (1 + Math.max(0, -HUD.heartHit) * 0.4 + (P.hp === 1 ? Math.sin(G.frame * 0.2) * 0.18 : 0));
+    X.font = `700 ${s}px system-ui`; X.fillStyle = '#ff4d6d'; X.fillText('♥', 24 + jx, top + 18);
+    X.textAlign = 'left'; X.font = '900 16px system-ui'; X.fillStyle = '#fff'; X.fillText(P.hp + ' / ' + P.maxHp, 40 + jx, top + 19); X.textAlign = 'center';
+  } else for (let i = 0; i < P.maxHp; i++) {
     const full = i < P.hp, low = P.hp === 1 && full, s = 18 * (1 + (low ? Math.sin(G.frame * 0.2) * 0.18 : 0) + Math.max(0, -HUD.heartHit) * 0.4);
     const jx = HUD.heartHit > 0.05 ? rnd(-3, 3) * HUD.heartHit : 0;
     X.font = `700 ${s}px system-ui`; X.fillStyle = full ? '#ff4d6d' : 'rgba(255,255,255,.18)'; X.fillText('♥', 21 + i * 19 + jx, top + 18);
@@ -886,26 +927,10 @@ function drawHud(boss) {
     X.textAlign = 'center'; X.font = '900 26px system-ui'; X.fillStyle = '#fff';
   }
   X.fillText(clock, W / 2, top + 16);
-  // loadout: every owned weapon / passive with its level pips
-  {
-    const owned = UPGRADES.filter(u => u.id !== 'blaster' && LV[u.id] > 0); let lx = 12; const ly = H - 46 - G.cineH - 40; // bottom-left, above the item slots: keeps the top of the screen clear
-    X.textAlign = 'center'; X.textBaseline = 'middle';
-    lx += drawHeroBadge(lx, ly);
-    // one tidy grid: 26 px tiles, 4 px gaps, level pips centred under each tile, wraps before the score column
-    const x0 = 12, maxX = W - 104; let row = 0; // stop before the Dash / Ultimate buttons
-    for (const u of owned) {
-      if (lx + 26 > maxX) { row++; lx = x0; }
-      const ty = ly - row * 38; // extra rows stack upward
-      X.fillStyle = 'rgba(18,21,42,.85)'; X.beginPath(); X.roundRect(lx + 0.5, ty + 0.5, 26, 26, 7); X.fill();
-      X.strokeStyle = u.col + 'aa'; X.lineWidth = 1.5; X.stroke();
-      X.font = '700 13px system-ui'; X.textAlign = 'center'; X.textBaseline = 'middle'; X.fillStyle = u.col; X.fillText(u.icon, lx + 13.5, ty + 14);
-      const pw = Math.min(5, (24 - (u.max - 1) * 2) / u.max), tot = u.max * pw + (u.max - 1) * 2, p0 = lx + 13.5 - tot / 2;
-      for (let k = 0; k < u.max; k++) { X.fillStyle = k < LV[u.id] ? '#ffc94d' : 'rgba(255,255,255,.16)'; X.fillRect(p0 + k * (pw + 2), ty + 30, pw, 3); }
-      lx += 30;
-    }
-  }
+  // loadout (hero badge, card tiles with level pips, item slots): drawn once into a cached image, redrawn only when it changes
+  drawLoadoutCached();
   // score (right)
-  X.textAlign = 'right'; X.font = '900 16px system-ui'; X.fillStyle = '#ffe14d'; X.fillText(G.score.toLocaleString('en-US'), W - 12, top + 52);
+  X.textAlign = 'right'; X.font = '900 16px system-ui'; X.fillStyle = '#ffe14d'; if (HUD.scoreV !== G.score) { HUD.scoreV = G.score; HUD.scoreS = G.score.toLocaleString('en-US'); } X.fillText(HUD.scoreS, W - 12, top + 52);
   X.font = '700 10px system-ui'; X.fillStyle = '#8d93c4'; X.fillText('¤ ' + G.coins + ' · SCORE', W - 12, top + 68);
   X.textAlign = 'center';
   X.font = `700 ${12 * (1 + HUD.killPop * 0.35)}px system-ui`; X.fillStyle = HUD.killPop > 0.3 ? '#fff' : '#8d93c4'; X.fillText('☠ ' + G.kills, W / 2, top + 40);
