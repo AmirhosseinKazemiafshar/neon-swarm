@@ -9,7 +9,7 @@
 const C = document.getElementById('c'), X = C.getContext('2d', { alpha: false });
 const TOUCH = matchMedia('(pointer: coarse)').matches;
 let LOWRES = false;
-const PCAP = TOUCH ? 420 : 700; // particle budget
+const PCAP = TOUCH ? 300 : 600; // particle budget (phones: late runs used to pile up hundreds)
 let W = 0, H = 0, DPR = 1;
 let vigC = null;
 function vignette() {
@@ -240,12 +240,12 @@ function burst(x, y, color, n, spd, size = 3, life = 40) {
   }
 }
 function shatter(x, y, color, n, spd, size) {
-  for (let i = 0; i < n && shards.length < 260; i++) {
+  for (let i = 0; i < n && shards.length < (TOUCH ? 110 : 220); i++) {
     const a = Math.random() * TAU, s = spd * rnd(0.4, 1.2);
     shards.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, rot: Math.random() * TAU, vr: rnd(-0.35, 0.35), size: size * rnd(0.6, 1.3), color, life: 44, max: 44 });
   }
 }
-function ring(x, y, r0, r1, color, life = 22, w = 4) { rings.push({ x, y, r0, r1, color, life, max: life, w }); }
+function ring(x, y, r0, r1, color, life = 22, w = 4) { if (rings.length >= (TOUCH ? 36 : 70)) return; rings.push({ x, y, r0, r1, color, life, max: life, w }); } // capped: late runs made 190 at once
 function text(x, y, s, color = '#fff', size = 15) { if (texts.length < 90) texts.push({ x, y, s, color, size, life: 42, max: 42, vx: rnd(-0.8, 0.8), vy: -2.2 }); }
 function shake(v) { const m = SETTINGS.shake; if (REDUCED || !m) return; G.shake = Math.min(0.6, G.shake + v / 80 * m); } // gentler: shake is for big moments only
 function flash(a, color = '#fff') { if (!REDUCED) { G.flash = Math.max(G.flash, a); G.flashCol = color; } }
@@ -300,7 +300,9 @@ function kill(e) {
   shatter(e.x, e.y, e.color, big ? 16 : crowd ? 2 : 5, big ? 7 : 4.5, big ? 9 : 5);
   burst(e.x, e.y, '#ffffff', big ? 12 : 4, 3, 2, 18);
   ring(e.x, e.y, e.r * 0.5, e.r * (big ? 5 : 2), e.color, big ? 34 : 12, big ? 6 : 2);
-  const spew = (v, n) => { for (let i = 0; i < n; i++) { const a = Math.random() * TAU, s = rnd(1.5, 4.5) * (n > 1 ? 1.6 : 1); gems.push({ x: e.x, y: e.y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, v, t: Math.random() * 6, age: 0 }); } };
+  const spew = (v, n) => { for (let i = 0; i < n; i++) {
+    // a full floor: new XP joins an existing gem instead of adding another sprite (no XP is lost)
+    if (gems.length > (TOUCH ? 110 : 160)) { const g = gems[gems.length - 1 - Math.floor(Math.random() * Math.min(30, gems.length))]; g.v += v; continue; } const a = Math.random() * TAU, s = rnd(1.5, 4.5) * (n > 1 ? 1.6 : 1); gems.push({ x: e.x, y: e.y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, v, t: Math.random() * 6, age: 0 }); } };
   if (e.type === 'boss') {
     G.hitStop = 14; shake(24); buzz(250); AU.sfx('big'); banner('BOSS DOWN', '#ffe14d', '+60 XP'); flash(0.7, '#ffffff'); punch(0.18);
     for (let k = 0; k < 4; k++) ring(e.x, e.y, 10, 200 + k * 80, ['#ff2e63', '#ffe14d', '#3cf0ff', '#fff'][k], 30 + k * 8, 6);

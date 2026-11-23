@@ -121,7 +121,7 @@ onBulletHit = function (b, e) {
   const keep = _onBulletHitA(b, e);
   for (let i = n0; i < bullets.length; i++) { const c = bullets[i]; if (!c.col && b.col) { c.el = b.el; c.col = b.col; c.core = b.core; c.w = b.w * 0.75; c.len = b.len * 0.7; } }
   if ((b.bounce || 0) < before) { b.ric = 14; ring(b.x, b.y, 2, 16, '#c08bff', 9, 2); }
-  if (evo('inferno') && b.explosive && patches.length < 36) patches.push({ x: b.x, y: b.y, r: 30, life: 110, max: 110, d: 5 });
+  if (evo('inferno') && b.explosive && patches.length < (TOUCH ? 16 : 30)) patches.push({ x: b.x, y: b.y, r: 30, life: 110, max: 110, d: 5 });
   if (evo('arc') && G.arcN < 3 && Math.random() < 0.28) { G.arcN++; chainZap(b.x, b.y, 2, b.dmg * 0.7); }
   if (evo('glacier') && Math.random() < 0.25 && parts.length < PCAP - 40) burst(b.x, b.y, '#dff6ff', 4, 3, 2, 16);
   return keep;

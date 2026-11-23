@@ -45,19 +45,27 @@ function onNewRun() {
 
 // ---------- explosions, coins ----------
 function explode(x, y, R, color) {
-  if (smokes.length > 120 || flashes.length > 14) R *= 0.8; // crowded screen: keep blasts readable
+  // small blasts (explosive rounds: one per hit, dozens a second late in a run) get a light version: no smoke, few sparks
+  if (R < 70) {
+    ring(x, y, R * 0.2, R, color, 16, 5); burst(x, y, color, 5, R / 12, 3, 18);
+    if (flashes.length < 6) flashes.push({ x, y, r: R * 0.7, life: 7, max: 7, color });
+    if (AU.ok('boom', 90)) AU.noise(0.2, 0.07, 600);
+    return;
+  }
+  if (smokes.length > 40 || flashes.length > 10) R *= 0.8; // crowded screen: keep blasts readable
   ring(x, y, R * 0.2, R, color, 20, 6); ring(x, y, R * 0.1, R * 0.7, '#ffffff', 12, 3);
   burst(x, y, '#ffe9b0', Math.min(24, R / 3 | 0), R / 10, 3, 22); burst(x, y, color, Math.min(20, R / 4 | 0), R / 14, 4, 30);
-  for (let i = 0; i < Math.min(9, R / 10 | 0) && smokes.length < 160; i++) {
+  for (let i = 0; i < Math.min(6, R / 12 | 0) && smokes.length < (TOUCH ? 40 : 90); i++) {
     const a = Math.random() * TAU, s = rnd(0.3, 1.2) * R / 30;
     smokes.push({ x: x + Math.cos(a) * R * 0.2, y: y + Math.sin(a) * R * 0.2, vx: Math.cos(a) * s, vy: Math.sin(a) * s, r: R * rnd(0.12, 0.22), vr: R * 0.012, life: 48, max: 48, c: 'rgba(36,32,58,' });
   }
-  flashes.push({ x, y, r: R * 0.9, life: 9, max: 9, color });
+  if (flashes.length < 12) flashes.push({ x, y, r: R * 0.9, life: 9, max: 9, color });
   if (R >= 70) shake(Math.min(7, R / 20)); // small blasts (explosive rounds hit every shot) never shake
   if (AU.ok('boom', 60)) { AU.noise(0.35, 0.12, 500); AU.tone(70, 0.3, 'sine', 0.12, -30); }
 }
 function coinBurst(x, y, n) {
-  for (let i = 0; i < n && coinDrops.length < 200; i++) { const a = Math.random() * TAU, s = rnd(1.5, 4.5); coinDrops.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, v: 1, t: Math.random() * 6, age: 0 }); }
+  for (let i = 0; i < n; i++) {
+    if (coinDrops.length > (TOUCH ? 60 : 100)) { coinDrops[coinDrops.length - 1 - Math.floor(Math.random() * Math.min(20, coinDrops.length))].v += 1; continue; } /* full floor: join an existing coin, value kept */ const a = Math.random() * TAU, s = rnd(1.5, 4.5); coinDrops.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, v: 1, t: Math.random() * 6, age: 0 }); }
 }
 function onKill(e) {
   if (e.type === 'boss') {

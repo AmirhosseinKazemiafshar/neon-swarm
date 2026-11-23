@@ -65,7 +65,9 @@ const PAINTS = [
   { id: 'prism', name: 'Prism', col: '#c08bff', how: 'Find all 5 guardian weaknesses', req: () => Object.keys((Save.get().simple || {}).found || {}).length >= 5 },
   { id: 'midnight', name: 'Midnight', col: '#3c2bff', how: '7-day crate streak', req: () => (daily().streak || 0) >= 7 },
 ];
-const paintNow = () => { const id = (Save.get().simple || {}).paint || 'classic'; return PAINTS.find(x => x.id === id) || PAINTS[0]; };
+// cached: drawShip asks every frame, and reading the save each time cost a storage read + JSON parse per frame
+let paintId = null;
+const paintNow = () => { if (paintId === null) paintId = (Save.get().simple || {}).paint || 'classic'; return PAINTS.find(x => x.id === paintId) || PAINTS[0]; };
 const paintCache = {};
 function tintShip(spr, col) {
   const key = col + '|' + spr.width; if (paintCache[key] && paintCache[key].src === spr) return paintCache[key].c;
@@ -90,7 +92,7 @@ function paintScreen() {
     <div class="paints in">${PAINTS.map(x => { const ok = x.req(p); return `<button class="pnt ${x.id === cur ? 'on' : ''}" data-p="${x.id}" ${ok ? '' : 'disabled'}><canvas width="72" height="72" data-c="${x.col || ''}"></canvas><b>${x.name}</b><em>${ok ? (x.id === cur ? 'EQUIPPED' : 'Tap to use') : '🔒 ' + x.how}</em></button>`; }).join('')}</div>
     <button class="btn ghost in" id="bk">Back</button>`);
   box.querySelectorAll('canvas[data-c]').forEach(cv => shipThumb(cv, cv.dataset.c || null));
-  box.querySelectorAll('[data-p]').forEach(b => b.onclick = () => { spSave(S => S.paint = b.dataset.p); AU.sfx('pick'); paintScreen(); });
+  box.querySelectorAll('[data-p]').forEach(b => b.onclick = () => { spSave(S => S.paint = b.dataset.p); paintId = b.dataset.p; AU.sfx('pick'); paintScreen(); });
   document.getElementById('bk').onclick = () => { AU.sfx('ui'); titleScreen(); };
 }
 
